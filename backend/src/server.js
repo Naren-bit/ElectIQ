@@ -46,6 +46,7 @@ const quizRouter      = require('./routes/quiz');
 const timelineRouter  = require('./routes/timeline');
 const checklistRouter = require('./routes/checklist');
 const { initFirebase }  = require('./services/firebase');
+const { initStorage, uploadAnalyticsSnapshot } = require('./services/storage');
 const { errorHandler }  = require('./middleware/errorHandler');
 const { requestLogger } = require('./middleware/requestLogger');
 
@@ -234,6 +235,13 @@ async function boot() {
   try {
     await initFirebase();
     console.log('[Firebase] Connected successfully');
+    
+    initStorage();
+    
+    // Schedule periodic analytics snapshot (every 20 minutes)
+    setInterval(() => {
+      uploadAnalyticsSnapshot().catch(err => console.error('[Storage Task Error]', err));
+    }, 20 * 60 * 1000);
 
     httpServer.listen(PORT, () => {
       console.log(`[ElectIQ] Running on http://localhost:${PORT}`);

@@ -31,6 +31,40 @@ We integrated Google Analytics natively on the frontend via the Firebase Web SDK
 To maintain a high-performance, lightweight PWA frontend (and to bypass ad-blockers), we migrated our user analytics server-side.
 - We track critical user interactions (e.g., `chat_sent`, `quiz_answer`, `booth_map_opened`) by piping them through our Express backend directly into Firebase. This creates a secure, robust analytics pipeline without bloating the client with tracking scripts.
 
+## 6. Cloud Storage (Firebase) — Analytics Archive
+Every 20 minutes, a full JSON snapshot of all session and quiz analytics is uploaded to Google Cloud Storage.
+- **Path pattern:** `snapshots/analytics-{timestamp}.json`
+- **Purpose:** Historical user behavior pattern analysis and civic engagement tracking.
+- **Graceful degradation:** If the bucket is not configured, uploads are silently skipped without affecting performance.
+
+## 7. Google Cloud Run — Production Deployment
+The backend is containerized for deployment on Google Cloud Run, enabling:
+- **Auto-scaling** from 0 to N instances based on traffic.
+- **Session affinity** for Socket.IO WebSocket persistence.
+- **Cold start optimization** via lightweight Alpine-based Node.js image.
+
+## 8. Google Cloud Build — CI/CD Pipeline
+Automated build pipeline (`cloudbuild.yaml`) that:
+1. Installs dependencies
+2. Runs the full Jest test suite
+3. Builds the Docker container
+4. Deploys to Cloud Run
+
+---
+
+## Service Integration Summary
+
+| Google Service | SDK/Package | Purpose | File |
+|---|---|---|---|
+| **Gemini 2.5 Flash** | `@google/generative-ai` | AI chat, context analysis, quizzes | `services/gemini.js` |
+| **Firebase RTDB** | `firebase-admin` | Real-time session and journey tracking | `services/firebase.js` |
+| **Firebase Admin SDK** | `firebase-admin` | Server-side authentication | `services/firebase.js` |
+| **Firebase Analytics** | `firebase-admin` | Server-side event tracking | `services/firebase.js` |
+| **Cloud Storage** | `firebase-admin/storage` | Analytics snapshot archive | `services/storage.js` |
+| **Cloud Run** | `Dockerfile` | Containerized backend deployment | `Dockerfile` |
+| **Cloud Build** | `cloudbuild.yaml` | Automated CI/CD pipeline | `cloudbuild.yaml` |
+| **Google Analytics 4** | `firebase-analytics-compat.js` | Frontend usage telemetry | `public/index.html` |
+
 ---
 
 *Note: While we initially integrated Google Maps for the polling booth finder, we swapped to OpenStreetMap/Leaflet strictly to avoid exposing a client-side API key in the public GitHub repository for the hackathon submission. However, our architecture is fully compatible with the Google Maps JS SDK.*
