@@ -334,9 +334,10 @@ To assist the judges, here is how ElectIQ maximizes the 6 core criteria:
 
 ## Assumptions
 
-- Election data is seeded from public ECI knowledge.
-- Polling booth addresses use OpenStreetMap for demo purposes to avoid exposing a client-side Google Maps key, though architecture supports Maps JS SDK.
-- App targets Indian elections. Timeline deadlines are general; exact state-specific dates require live ECI API integration.
+- **Election data:** Seeded from public ECI knowledge. Timelines are structurally accurate but exact state-specific dates would require live ECI API integration in a production environment.
+- **Mapping Provider:** Polling booth addresses use OpenStreetMap/Leaflet for demo purposes to avoid exposing a client-side Google Maps API key in a public repository, though the architecture natively supports the Google Maps JS SDK.
+- **Simulated Polling Booths:** Because live voter roll data is restricted by the ECI, the map assigns mock, realistic polling locations based on the user's selected state (e.g., "Simulated Booth: Chennai Public School" for Tamil Nadu, or "Mumbai Central School" for Maharashtra) rather than querying a real electoral database.
+- **Scope:** The application specifically targets Indian elections; internationalization would be a future extension.
 
 ---
 

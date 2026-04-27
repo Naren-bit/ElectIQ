@@ -305,17 +305,20 @@ window.openBoothMap = function() {
   
   // Default to a central coordinate
   var latLng = [20.5937, 78.9629];
-  if(profile && profile.state === 'Maharashtra') latLng = [18.9387, 72.8258]; // Mumbai
-  if(profile && profile.state === 'Delhi') latLng = [28.6139, 77.2090];
+  var boothName = 'Approximate Area';
+  
+  if(profile && profile.state === 'Maharashtra') { latLng = [18.9387, 72.8258]; boothName = 'Simulated Booth: Mumbai Central School'; }
+  if(profile && profile.state === 'Delhi') { latLng = [28.6139, 77.2090]; boothName = 'Simulated Booth: Delhi Public School'; }
+  if(profile && profile.state === 'Tamil Nadu') { latLng = [13.0489, 80.2332]; boothName = 'Simulated Booth: Chennai Public School (T. Nagar)'; }
   
   if(!boothMapInstance) {
-    boothMapInstance = L.map('booth-map').setView(latLng, 12);
+    boothMapInstance = L.map('booth-map').setView(latLng, 15); // Zoomed in closer for realism
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(boothMapInstance);
-    L.marker(latLng).addTo(boothMapInstance).bindPopup('Approximate Area').openPopup();
+    L.marker(latLng).addTo(boothMapInstance).bindPopup('<b>Assigned Polling Booth</b><br>' + boothName).openPopup();
   } else {
-    boothMapInstance.setView(latLng, 12);
+    boothMapInstance.setView(latLng, 15);
   }
   
   document.getElementById('directions-btn').onclick = function() {
