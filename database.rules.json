@@ -1,0 +1,31 @@
+{
+  "rules": {
+    "sessions": {
+      "$sessionId": {
+        ".read": true,
+        ".write": true,
+        ".validate": "newData.hasChildren(['updatedAt'])"
+      }
+    },
+    "quiz_results": {
+      "$sessionId": {
+        ".read": false,
+        ".write": true
+      }
+    },
+    "checklists": {
+      "$sessionId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "timelines": {
+      ".read": true,
+      ".write": false
+    },
+    "analytics": {
+      ".read": false,
+      ".write": true
+    }
+  }
+}

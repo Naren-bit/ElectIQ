@@ -1,0 +1,23 @@
+{
+  "name": "ElectIQ — Your Election Companion",
+  "short_name": "ElectIQ",
+  "description": "AI-powered guide to the Indian election process — personalised, accessible, and non-partisan",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8f9fc",
+  "theme_color": "#1a3a8f",
+  "orientation": "portrait",
+  "categories": ["education", "government", "utilities"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%231a3a8f' width='100' height='100' rx='20'/><text x='50' y='55' font-size='50' text-anchor='middle' dominant-baseline='middle' fill='white'>🗳️</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%231a3a8f' width='100' height='100' rx='20'/><text x='50' y='55' font-size='50' text-anchor='middle' dominant-baseline='middle' fill='white'>🗳️</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
