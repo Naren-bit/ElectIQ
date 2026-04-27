@@ -1,0 +1,128 @@
+{
+  "timelines": {
+    "general": {
+      "step1": {
+        "id": 1,
+        "title": "Check voter registration",
+        "description": "Verify your name on the electoral roll at voters.eci.gov.in",
+        "deadline": "Before nomination period",
+        "status": "pending",
+        "icon": "📋",
+        "link": "https://voters.eci.gov.in",
+        "category": "Registration"
+      },
+      "step2": {
+        "id": 2,
+        "title": "Register if not enrolled",
+        "description": "Submit Form 6 on NVSP portal with supporting documents",
+        "deadline": "30 days before polls",
+        "status": "pending",
+        "icon": "✍️",
+        "link": "https://voters.eci.gov.in/register-as-voter",
+        "category": "Registration"
+      },
+      "step3": {
+        "id": 3,
+        "title": "Download / update voter ID",
+        "description": "Download e-EPIC card from voterportal.eci.gov.in",
+        "deadline": "Anytime",
+        "status": "pending",
+        "icon": "🪪",
+        "link": "https://voterportal.eci.gov.in",
+        "category": "Identity"
+      },
+      "step4": {
+        "id": 4,
+        "title": "Find your polling booth",
+        "description": "Search your booth address and serial number on electoral roll",
+        "deadline": "1 week before polling",
+        "status": "pending",
+        "icon": "📍",
+        "link": "https://voters.eci.gov.in",
+        "category": "Preparation"
+      },
+      "step5": {
+        "id": 5,
+        "title": "Polling day — cast your vote",
+        "description": "Carry approved photo ID. Press button next to your chosen symbol on EVM. VVPAT confirms your vote.",
+        "deadline": "Election day",
+        "status": "pending",
+        "icon": "🗳️",
+        "link": null,
+        "category": "Voting"
+      },
+      "step6": {
+        "id": 6,
+        "title": "Track results",
+        "description": "Watch live results on results.eci.gov.in after polls close",
+        "deadline": "Results day",
+        "status": "pending",
+        "icon": "📊",
+        "link": "https://results.eci.gov.in",
+        "category": "Results"
+      }
+    },
+    "maharashtra": {
+      "step1": {
+        "id": 1,
+        "title": "Check Maharashtra electoral roll",
+        "description": "Verify your name at ceo.maharashtra.gov.in or voters.eci.gov.in",
+        "deadline": "Before nomination period",
+        "status": "pending",
+        "icon": "📋",
+        "link": "https://ceo.maharashtra.gov.in",
+        "category": "Registration"
+      },
+      "step2": {
+        "id": 2,
+        "title": "Register via Form 6",
+        "description": "Submit online at NVSP portal or offline at your Taluka office",
+        "deadline": "30 days before polls",
+        "status": "pending",
+        "icon": "✍️",
+        "link": "https://voters.eci.gov.in/register-as-voter",
+        "category": "Registration"
+      },
+      "step3": {
+        "id": 3,
+        "title": "Download e-EPIC card",
+        "description": "Maharashtra voters can download digital EPIC from voterportal.eci.gov.in",
+        "deadline": "Anytime",
+        "status": "pending",
+        "icon": "🪪",
+        "link": "https://voterportal.eci.gov.in",
+        "category": "Identity"
+      },
+      "step4": {
+        "id": 4,
+        "title": "Find your polling booth",
+        "description": "Search your booth via CEO Maharashtra or NVSP portal",
+        "deadline": "1 week before polling",
+        "status": "pending",
+        "icon": "📍",
+        "link": "https://ceo.maharashtra.gov.in",
+        "category": "Preparation"
+      },
+      "step5": {
+        "id": 5,
+        "title": "Cast your vote on polling day",
+        "description": "Carry approved photo ID. Use EVM + VVPAT verification.",
+        "deadline": "Election day",
+        "status": "pending",
+        "icon": "🗳️",
+        "link": null,
+        "category": "Voting"
+      },
+      "step6": {
+        "id": 6,
+        "title": "Track Maharashtra results",
+        "description": "Live results on results.eci.gov.in and CEO Maharashtra portal",
+        "deadline": "Results day",
+        "status": "pending",
+        "icon": "📊",
+        "link": "https://results.eci.gov.in",
+        "category": "Results"
+      }
+    }
+  }
+}

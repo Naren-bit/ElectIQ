@@ -31,7 +31,7 @@ const { saveSession, trackEvent } = require('../services/firebase');
  */
 router.post('/', async (req, res, next) => {
   try {
-    const { message, profile = {}, history = [], sessionId, language = 'English' } = req.body;
+    const { message, profile = {}, history = [], sessionId, language = 'English', image } = req.body;
 
     /* ---------- validation ---------- */
     if (!message || typeof message !== 'string') {
@@ -49,7 +49,7 @@ router.post('/', async (req, res, next) => {
     /* ---------- Gemini → local fallback ---------- */
     let reply;
     try {
-      reply = await chat(message, profile, history, language);
+      reply = await chat(message, profile, history, language, image);
     } catch (err) {
       console.warn('[Chat] Gemini unavailable, using local fallback:', err.message);
       reply = localFallback(message, profile);

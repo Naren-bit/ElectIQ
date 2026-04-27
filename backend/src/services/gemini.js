@@ -117,7 +117,7 @@ Response rules:
  * @param {string} [language='English'] - Response language
  * @returns {Promise<string>} Gemini's response text
  */
-async function chat(message, profile = {}, history = [], language = 'English') {
+async function chat(message, profile = {}, history = [], language = 'English', imageBase64 = null) {
   const profileContext = profile.state
     ? `\n\nUser profile: State: ${profile.state} | Election type: ${profile.electionType || 'General'} | First-time voter: ${profile.isFirstTime ? 'Yes' : 'No'} | Age: ${profile.age || 'Unknown'}`
     : '\n\nUser profile: Not yet set — ask a clarifying question about their state if location-specific.';
@@ -135,7 +135,16 @@ async function chat(message, profile = {}, history = [], language = 'English') {
     })),
   });
 
-  const result = await chatSession.sendMessage(message);
+  let payload = message;
+  if (imageBase64) {
+    // Attempt to parse mime type from base64 if needed, default to jpeg
+    payload = [
+      { text: message },
+      { inlineData: { data: imageBase64, mimeType: 'image/jpeg' } }
+    ];
+  }
+
+  const result = await chatSession.sendMessage(payload);
   return result.response.text();
 }
 

@@ -22,6 +22,34 @@ function formatBot(t){return t.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');}
 function announce(msg){var el=document.getElementById('live-announce');if(el){el.textContent=msg;setTimeout(function(){el.textContent='';},3000);}}
 function getTS(){var d=new Date();return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
 
+window.gaLogEvent = function(name, params) {
+  if (window.analytics) window.analytics.logEvent(name, params);
+};
+
+// IMAGE UPLOAD STATE
+var selectedImageBase64 = null;
+window.handleImageSelect = function(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(evt) {
+    selectedImageBase64 = evt.target.result.split(',')[1];
+    var preview = document.getElementById('image-preview');
+    var container = document.getElementById('image-preview-container');
+    if (preview && container) {
+      preview.src = evt.target.result;
+      container.style.display = 'block';
+    }
+  };
+  reader.readAsDataURL(file);
+};
+window.removeImage = function() {
+  selectedImageBase64 = null;
+  document.getElementById('image-upload').value = '';
+  var container = document.getElementById('image-preview-container');
+  if (container) container.style.display = 'none';
+};
+
 // CLOCK
 function updateClock(){
   var now=new Date();
@@ -63,6 +91,7 @@ window.switchTab=function(tab){
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sidebar-overlay').classList.remove('open');
   announce(tab+' tab selected');
+  window.gaLogEvent('tab_viewed', { tab: tab });
 };
 
 // SIDEBAR KEYBOARD NAV
@@ -107,7 +136,8 @@ function renderHome(){
   el.innerHTML='<div class="dashboard">'+
     '<div class="welcome-card"><div class="welcome-card-top"><div><div class="welcome-name">'+(profile.isFirstTime?'Welcome, first-time voter! 🎉':'Welcome back! 🗳️')+'</div><div class="welcome-detail">You\'re in <strong>'+escapeHtml(profile.state)+'</strong> for the <strong>'+escapeHtml(profile.electionType)+'</strong> election.</div></div><div class="lang-toggle-wrap" id="lang-toggle-home"></div></div><div class="progress-bar-wrap"><div class="progress-bar-top"><span class="progress-bar-label">Journey Progress</span><span class="progress-bar-pct">'+pct+'%</span></div><div class="progress-bar"><div class="progress-bar-fill" style="width:'+pct+'%"></div></div></div></div>'+
     '<div class="dash-grid"><div class="stat-card"><div class="stat-icon">📋</div><div class="stat-value">'+done+'/'+total+'</div><div class="stat-label">Journey Steps</div></div><div class="stat-card"><div class="stat-icon">✅</div><div class="stat-value">'+clDone+'/'+clTotal+'</div><div class="stat-label">Checklist Items</div></div><div class="stat-card"><div class="stat-icon">🧠</div><div class="stat-value">'+quizState.score+'/'+quizState.total+'</div><div class="stat-label">Quiz Score</div></div><div class="stat-card"><div class="stat-icon">🔥</div><div class="stat-value">'+quizState.streak+'</div><div class="stat-label">Quiz Streak</div></div></div>'+
-    '<div class="section-title">Quick Actions</div><div class="quick-grid"><button class="quick-card" onclick="switchTab(\'chat\')"><span class="quick-card-icon">💬</span>Ask AI a question</button><button class="quick-card" onclick="switchTab(\'checklist\')"><span class="quick-card-icon">✅</span>My checklist</button><button class="quick-card" onclick="switchTab(\'journey\')"><span class="quick-card-icon">🗺️</span>View journey</button><button class="quick-card" onclick="switchTab(\'chat\');setTimeout(function(){sendQuick(\'Help me find my polling booth\');},300)"><span class="quick-card-icon">📍</span>Find my booth</button></div>'+
+    '<div class="section-title">Quick Actions</div><div class="quick-grid"><button class="quick-card" onclick="switchTab(\'chat\')"><span class="quick-card-icon">💬</span>Ask AI a question</button><button class="quick-card" onclick="switchTab(\'checklist\')"><span class="quick-card-icon">✅</span>My checklist</button><button class="quick-card" onclick="switchTab(\'journey\')"><span class="quick-card-icon">🗺️</span>View journey</button><button class="quick-card" onclick="openBoothMap()"><span class="quick-card-icon">📍</span>Find my booth</button></div>'+
+    '<div id="booth-map-container" style="display:none; margin-top:16px;"><div class="section-title">Your Polling Area</div><div id="booth-map" style="width:100%;height:300px;border-radius:12px;margin-bottom:8px;"></div><button class="btn-primary" id="directions-btn" style="width:100%">Get Directions ↗</button></div>'+
     '<button class="btn-ghost" onclick="resetProfile()">🔄 Change Profile</button></div>';
   renderLangToggle('lang-toggle-home');
 }
@@ -121,6 +151,7 @@ window.saveProfile=function(){
   sessionStorage.setItem('eq_profile',JSON.stringify(profile));
   updateSidebarProfile();
   announce('Profile saved! Welcome to ElectIQ.');
+  window.gaLogEvent('profile_set', { state: state, electionType: elType, isFirstTime: isFirst });
   renderHome();loadTimeline();
 };
 
@@ -155,6 +186,7 @@ window.toggleStep=function(id){
   sessionStorage.setItem('eq_steps',JSON.stringify(completedSteps));
   renderJourney();renderHome();
   announce(completedSteps[id]?'Step marked done':'Step unmarked');
+  if(completedSteps[id] && profile) window.gaLogEvent('timeline_step_completed', { step: id, state: profile.state });
 };
 
 // CHAT
@@ -179,7 +211,12 @@ window.handleSend=function(){
   addMessage(msg,'user');
   conversationHistory.push({role:'user',text:msg});
   isThinking=true;showTyping();
-  fetch(BACKEND_URL+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg,profile:profile||{},history:conversationHistory.slice(-12),sessionId:sessionId,language:currentLang})})
+  window.gaLogEvent('chat_sent', { hasVoice: window.voiceTriggered || false, hasImage: !!selectedImageBase64, messageLength: msg.length });
+  
+  var payload = {message:msg, profile:profile||{}, history:conversationHistory.slice(-12), sessionId:sessionId, language:currentLang};
+  if(selectedImageBase64) payload.image = selectedImageBase64;
+  
+  fetch(BACKEND_URL+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
   .then(function(r){return r.json();})
   .then(function(d){
     hideTyping();isThinking=false;
@@ -187,8 +224,9 @@ window.handleSend=function(){
     addMessage(reply,'bot');
     conversationHistory.push({role:'model',text:reply});
     if(window.voiceTriggered&&synthesis){speakResponse(reply);window.voiceTriggered=false;}
+    removeImage();
   })
-  .catch(function(){hideTyping();isThinking=false;addMessage('Connection error. Please try again.','bot');});
+  .catch(function(){hideTyping();isThinking=false;addMessage('Connection error. Please try again.','bot');removeImage();});
 };
 
 window.sendQuick=function(msg){
@@ -248,9 +286,42 @@ window.toggleCL=function(id){
   checklistProgress[id]=!checklistProgress[id];
   sessionStorage.setItem('eq_cl',JSON.stringify(checklistProgress));
   renderChecklist();
+  if(checklistProgress[id]) window.gaLogEvent('checklist_item_checked', { itemId: id });
   fetch(BACKEND_URL+'/api/checklist/progress',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:sessionId,itemId:id,completed:!!checklistProgress[id]})}).catch(function(){});
 };
 
+// BOOTH MAP
+var boothMapInstance = null;
+window.openBoothMap = function() {
+  var container = document.getElementById('booth-map-container');
+  if(container) container.style.display = 'block';
+  
+  if(typeof L === 'undefined') {
+    document.getElementById('booth-map').innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">Map library not loaded.</div>';
+    return;
+  }
+  
+  window.gaLogEvent('booth_map_opened', { state: profile ? profile.state : 'Unknown' });
+  
+  // Default to a central coordinate
+  var latLng = [20.5937, 78.9629];
+  if(profile && profile.state === 'Maharashtra') latLng = [18.9387, 72.8258]; // Mumbai
+  if(profile && profile.state === 'Delhi') latLng = [28.6139, 77.2090];
+  
+  if(!boothMapInstance) {
+    boothMapInstance = L.map('booth-map').setView(latLng, 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(boothMapInstance);
+    L.marker(latLng).addTo(boothMapInstance).bindPopup('Approximate Area').openPopup();
+  } else {
+    boothMapInstance.setView(latLng, 12);
+  }
+  
+  document.getElementById('directions-btn').onclick = function() {
+    window.open('https://www.google.com/maps/dir/?api=1&destination='+latLng[0]+','+latLng[1]);
+  };
+};
 // QUIZ
 function renderQuizStart(){
   var el=document.getElementById('view-quiz');
@@ -290,6 +361,9 @@ window.answerQuiz=function(idx){
   document.querySelectorAll('.quiz-opt').forEach(function(btn,i){btn.classList.add('disabled');if(i===q.correctIndex)btn.classList.add('correct');if(i===idx&&!correct)btn.classList.add('wrong');});
   var fb=document.getElementById('quiz-feedback');
   fb.innerHTML='<div class="quiz-explain">'+(correct?'✅ Correct! ':'❌ Incorrect. ')+escapeHtml(q.explanation)+'</div><button class="btn-primary quiz-next" onclick="fetchQuizQuestion()">Next Question →</button>';
+  
+  window.gaLogEvent('quiz_answer', { correct: correct, difficulty: quizState.difficulty, topic: q.topic });
+  
   fetch(BACKEND_URL+'/api/quiz/answer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:sessionId,topic:q.topic,correct:correct,difficulty:quizState.difficulty})})
   .then(function(r){return r.json();}).then(function(d){quizState.difficulty=d.nextDifficulty||quizState.difficulty;}).catch(function(){});
   announce(correct?'Correct answer!':'Incorrect. The right answer was '+q.options[q.correctIndex]);
