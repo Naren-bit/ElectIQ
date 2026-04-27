@@ -22,7 +22,12 @@ Security is paramount for civic technology. Instead of exposing our database to 
 - Service Account authentication ensures that all database writes are securely handled server-side.
 - The `firebase-seed.json` structure is automatically injected into the database on boot if the timeline data is missing.
 
-## 4. Server-Side Analytics Tracking
+## 4. Google Analytics 4 (via Firebase Web SDK)
+We integrated Google Analytics natively on the frontend via the Firebase Web SDK to track explicit user journeys and feature adoption.
+- **Events tracked:** `profile_set`, `tab_viewed`, `chat_sent`, `timeline_step_completed`, `checklist_item_checked`, `quiz_answer`, and `booth_map_opened`.
+- This provides operators with immediate insight into which parts of the civic pipeline users engage with most heavily.
+
+## 5. Server-Side Analytics Tracking
 To maintain a high-performance, lightweight PWA frontend (and to bypass ad-blockers), we migrated our user analytics server-side.
 - We track critical user interactions (e.g., `chat_sent`, `quiz_answer`, `booth_map_opened`) by piping them through our Express backend directly into Firebase. This creates a secure, robust analytics pipeline without bloating the client with tracking scripts.
 
