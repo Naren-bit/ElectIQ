@@ -194,8 +194,7 @@ Respond ONLY with valid JSON (no markdown):
 }`;
 
   const result = await model.generateContent(prompt);
-  const text = result.response.text().replace(/```json|```/g, '').trim();
-  return JSON.parse(text);
+  return _extractJson(result.response.text());
 }
 
 /* ------------------------------------------------------------------ */
@@ -245,8 +244,7 @@ Return ONLY valid JSON array (no markdown):
 Include 10-14 items. First-time voters need registration steps. All voters need ID and polling day steps.`;
 
   const result = await model.generateContent(prompt);
-  const text = result.response.text().replace(/```json|```/g, '').trim();
-  return JSON.parse(text);
+  return _extractJson(result.response.text());
 }
 
 /* ------------------------------------------------------------------ */

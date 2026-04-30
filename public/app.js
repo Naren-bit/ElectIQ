@@ -244,11 +244,34 @@ document.getElementById('chat-input').addEventListener('keydown',function(e){
 function loadChecklist(){
   if(!profile||checklistLoading)return;
   checklistLoading=true;
-  fetch(BACKEND_URL+'/api/checklist/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({profile:profile,language:currentLang})})
-  .then(function(r){return r.json();})
-  .then(function(d){checklistLoading=false;checklistItems=d.checklist||[];if(checklistItems.length)sessionStorage.setItem('eq_cli',JSON.stringify(checklistItems));renderChecklist();})
-  .catch(function(){
+
+  var controller = new AbortController();
+  var timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
+
+  fetch(BACKEND_URL+'/api/checklist/generate',{
+    method:'POST',
+    signal: controller.signal,
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({profile:profile,language:currentLang})
+  })
+  .then(function(r){
+    if(!r.ok) throw new Error('API Error');
+    return r.json();
+  })
+  .then(function(d){
     checklistLoading=false;
+    if(d.checklist && d.checklist.length) {
+      checklistItems=d.checklist;
+      sessionStorage.setItem('eq_cli',JSON.stringify(checklistItems));
+      renderChecklist();
+    } else {
+      throw new Error('Empty checklist');
+    }
+  })
+  .catch(function(err){
+    clearTimeout(timeoutId);
+    checklistLoading=false;
+    console.warn('[Checklist] Using fallback items:', err.message);
     checklistItems=[
       {id:'reg_check',category:'Registration',task:'Check your name on the electoral roll',detail:'Visit voters.eci.gov.in and search by name or EPIC number',isRequired:true,officialLink:'https://voters.eci.gov.in'},
       {id:'reg_form6',category:'Registration',task:'Submit Form 6 if not registered',detail:'Available online on NVSP portal or offline at Taluka office',isRequired:true,officialLink:'https://voters.eci.gov.in/register-as-voter'},
@@ -267,7 +290,7 @@ function renderChecklist(){
   var el=document.getElementById('view-checklist');
   if(!profile){el.innerHTML='<div class="empty-state">Set up your profile on the Dashboard first.</div>';return;}
   if(!checklistItems.length&&!checklistLoading){el.innerHTML='<div class="empty-state">Loading checklist...</div>';loadChecklist();return;}
-  if(!checklistItems.length){el.innerHTML='<div class="empty-state">Loading checklist...</div>';return;}
+  if(!checklistItems.length){el.innerHTML='<div class="empty-state">Loading your personalised checklist...</div>';return;}
   var done=0;checklistItems.forEach(function(it){if(checklistProgress[it.id])done++;});
   var pct=Math.round(done/checklistItems.length*100);
   var cats={};checklistItems.forEach(function(it){if(!cats[it.category])cats[it.category]=[];cats[it.category].push(it);});
@@ -333,14 +356,36 @@ function renderQuizStart(){
 
 window.fetchQuizQuestion=function(){
   var el=document.getElementById('view-quiz');
-  el.innerHTML='<div class="quiz-wrap"><div class="empty-state">Generating question...</div></div>';
+  el.innerHTML='<div class="quiz-wrap"><div class="empty-state">Generating your next challenge...</div></div>';
+  
+  var controller = new AbortController();
+  var timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
+  
   var st=profile?profile.state:'';var prev=quizState.topics.join(',');
-  fetch(BACKEND_URL+'/api/quiz/question?difficulty='+quizState.difficulty+'&state='+encodeURIComponent(st)+'&previousTopics='+encodeURIComponent(prev)+'&language='+encodeURIComponent(currentLang))
-  .then(function(r){return r.json();})
-  .then(function(d){quizState.currentQ=d.question;quizState.answered=false;renderQuizQuestion();})
+  fetch(BACKEND_URL+'/api/quiz/question?difficulty='+quizState.difficulty+'&state='+encodeURIComponent(st)+'&previousTopics='+encodeURIComponent(prev)+'&language='+encodeURIComponent(currentLang), {
+    signal: controller.signal
+  })
+  .then(function(r){
+    if(!r.ok) throw new Error('API Error');
+    return r.json();
+  })
+  .then(function(d){
+    clearTimeout(timeoutId);
+    quizState.currentQ=d.question || d; // Handle direct return or wrapped
+    quizState.answered=false;
+    renderQuizQuestion();
+  })
   .catch(function(){
-    quizState.currentQ={question:'What does EPIC stand for?',options:['Elector Photo Identity Card','Electronic Polling ID Code','Election Process ID Certificate','Electoral Photo ID Coupon'],correctIndex:0,explanation:'EPIC stands for Elector Photo Identity Card, issued by the Election Commission of India.',topic:'voter_id'};
-    quizState.answered=false;renderQuizQuestion();
+    clearTimeout(timeoutId);
+    quizState.currentQ={
+      question:'What does EPIC stand for?',
+      options:['Elector Photo Identity Card','Electronic Polling ID Code','Election Process ID Certificate','Electoral Photo ID Coupon'],
+      correctIndex:0,
+      explanation:'EPIC stands for Elector Photo Identity Card, issued by the Election Commission of India.',
+      topic:'voter_id'
+    };
+    quizState.answered=false;
+    renderQuizQuestion();
   });
 };
 
