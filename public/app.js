@@ -8,6 +8,7 @@ var activeTab='home';
 var timelineSteps=[];
 var completedSteps=JSON.parse(sessionStorage.getItem('eq_steps')||'{}');
 var checklistItems=[];
+var checklistLoading=false;
 var checklistProgress=JSON.parse(sessionStorage.getItem('eq_cl')||'{}');
 var quizState={score:0,total:0,streak:0,difficulty:1,topics:[],currentQ:null,answered:false};
 var currentLang=sessionStorage.getItem('eq_lang')||'English';
@@ -262,7 +263,6 @@ function loadChecklist(){
   });
 }
 
-var checklistLoading=false;
 function renderChecklist(){
   var el=document.getElementById('view-checklist');
   if(!profile){el.innerHTML='<div class="empty-state">Set up your profile on the Dashboard first.</div>';return;}

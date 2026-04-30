@@ -114,7 +114,8 @@ Response rules:
  * @param {boolean} [profile.isFirstTime]  - First-time voter flag
  * @param {number}  [profile.age]      - Voter age
  * @param {Array<{role:string,text:string}>} [history=[]] - Prior turns
- * @param {string} [language='English'] - Response language
+ * @param {string}  [language='English']  - BCP-47 language name for response (e.g. 'Tamil', 'Hindi')
+ * @param {string|null} [imageBase64=null] - Base64-encoded image data for multimodal vision queries
  * @returns {Promise<string>} Gemini's response text
  */
 async function chat(message, profile = {}, history = [], language = 'English', imageBase64 = null) {

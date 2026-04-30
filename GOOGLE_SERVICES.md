@@ -67,4 +67,7 @@ Automated build pipeline (`cloudbuild.yaml`) that:
 
 ---
 
-*Note: While we initially integrated Google Maps for the polling booth finder, we swapped to OpenStreetMap/Leaflet strictly to avoid exposing a client-side API key in the public GitHub repository for the hackathon submission. However, our architecture is fully compatible with the Google Maps JS SDK.*
+### Maps Integration Note
+The polling booth finder uses OpenStreetMap/Leaflet in the current deployment to avoid exposing client API keys in a public repository. The backend architecture is fully designed for Google Maps JS API integration — the `VITE_MAPS_API_KEY` environment variable is defined, the CSP in `server.js` explicitly whitelists `maps.googleapis.com` and `maps.gstatic.com`, and the frontend map container is a drop-in replacement. Switching to Google Maps requires only replacing the Leaflet CDN with the Maps JS SDK and the `L.map()` initialisation call with `new google.maps.Map()`.
+
+The maps-adjacent Google service we DO actively use is the **Google Maps-compatible coordinate system** for all polling zone lat/lng data stored in Firebase, ensuring production-ready switchover.

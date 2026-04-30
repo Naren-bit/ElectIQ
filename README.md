@@ -341,6 +341,39 @@ To assist the judges, here is how ElectIQ maximizes the 6 core criteria:
 
 ---
 
+## 📸 Screenshots
+
+| Home / Onboarding | Ask AI (Chat) | Civic Quiz |
+|---|---|---|
+| Profile setup with state, election type, voter experience | Gemini 2.5 Flash answering in regional language with voter context | Adaptive quiz with difficulty scaling and streak tracking |
+
+| Election Journey | Document Checklist |
+|---|---|
+| 6-step visual timeline with Firebase-backed deadlines | Gemini-generated personalised checklist with Firebase progress sync |
+
+> **Live demo:** Deploy using the Docker/Cloud Run instructions below and open the PWA in any browser.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. **Fork** the repository on GitHub
+2. **Create a feature branch**: `git checkout -b feature/your-feature-name`
+3. **Make your changes** — ensure all tests pass: `cd backend && npm test`
+4. **Commit** with a descriptive message: `git commit -m 'feat: add your feature'`
+5. **Push** to your branch: `git push origin feature/your-feature-name`
+6. **Open a Pull Request** against `main` with a clear description
+
+### Code standards
+- All backend functions must have JSDoc comments (`@param`, `@returns`)
+- New routes must have corresponding tests in `api.test.js`
+- No secrets or API keys in committed code — use `.env` (see `.env.example`)
+- Run `npm test` before every commit; PRs with failing tests will not be merged
+
+---
+
 <p align="center">
   Built for <strong>PromptWars Hackathon</strong> 🏆<br/>
   <em>Making the civic journey personal, clear, and accessible.</em>

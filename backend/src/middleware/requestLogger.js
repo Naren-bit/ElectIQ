@@ -1,6 +1,7 @@
 /**
  * @fileoverview Request logger middleware with response-time tracking.
  * Logs coloured status codes and elapsed milliseconds for every request.
+ * Sets the `X-Response-Time` header on every response for observability.
  *
  * @module middleware/requestLogger
  */
@@ -20,6 +21,7 @@ function requestLogger(req, res, next) {
 
   res.on('finish', () => {
     const ms = Date.now() - start;
+    res.setHeader('X-Response-Time', `${ms}ms`);
 
     const colour = res.statusCode < 400 ? '\x1b[32m' : '\x1b[31m';
     const reset  = '\x1b[0m';
