@@ -4,7 +4,7 @@ var sessionId='eq-'+Math.random().toString(36).slice(2,10)+'-'+Date.now().toStri
 var profile=JSON.parse(sessionStorage.getItem('eq_profile')||'null');
 var conversationHistory=[];
 var isThinking=false;
-var activeTab='home';
+var activeTab='guide';
 var timelineSteps=[];
 var completedSteps=JSON.parse(sessionStorage.getItem('eq_steps')||'{}');
 var checklistItems=[];
@@ -523,5 +523,6 @@ window.setLang=function(lang){
 (function boot(){
   updateSidebarProfile();
   if(profile){loadTimeline();var cached=sessionStorage.getItem('eq_cli');if(cached){try{checklistItems=JSON.parse(cached);}catch(e){}}}
-  renderHome();initVoice();
+  switchTab('guide');
+  initVoice();
 })();
