@@ -19,10 +19,18 @@
 function requestLogger(req, res, next) {
   const start = Date.now();
 
+  // Intercept res.send to set the header before headers are flushed
+  const originalSend = res.send;
+  res.send = function (body) {
+    if (!res.headersSent) {
+      const ms = Date.now() - start;
+      res.setHeader('X-Response-Time', `${ms}ms`);
+    }
+    return originalSend.call(this, body);
+  };
+
   res.on('finish', () => {
     const ms = Date.now() - start;
-    res.setHeader('X-Response-Time', `${ms}ms`);
-
     const colour = res.statusCode < 400 ? '\x1b[32m' : '\x1b[31m';
     const reset  = '\x1b[0m';
     console.log(`${colour}[${res.statusCode}]${reset} ${req.method} ${req.path} — ${ms}ms`);
