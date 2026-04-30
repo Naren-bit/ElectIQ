@@ -16,7 +16,7 @@ var STATE_LANGUAGES={'Andhra Pradesh':'Telugu','Arunachal Pradesh':'English','As
 
 var INDIAN_STATES=['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Delhi','Jammu & Kashmir','Ladakh','Puducherry','Chandigarh'];
 
-var TAB_TITLES={home:'Dashboard',journey:'Election Journey',chat:'Ask AI',checklist:'Preparation Checklist',quiz:'Civic Quiz'};
+var TAB_TITLES={home:'Dashboard',journey:'Election Journey',chat:'Ask AI',checklist:'Preparation Checklist',guide:'Election Guide',quiz:'Civic Quiz'};
 
 function escapeHtml(s){if(!s)return'';return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function formatBot(t){return t.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');}
@@ -77,7 +77,7 @@ window.switchTab=function(tab){
     t.setAttribute('aria-selected',isA?'true':'false');
   });
   var panels=document.querySelectorAll('.panel');
-  var tabOrder=['home','journey','chat','checklist','quiz'];
+  var tabOrder=['home','journey','chat','checklist','guide','quiz'];
   var idx=tabOrder.indexOf(tab);
   panels.forEach(function(p,i){p.classList.toggle('active',i===idx);});
   var tt=document.getElementById('topbar-title');
@@ -87,6 +87,7 @@ window.switchTab=function(tab){
   if(tab==='home')renderHome();
   if(tab==='journey')renderJourney();
   if(tab==='checklist')renderChecklist();
+  if(tab==='guide')renderGuide();
   if(tab==='quiz'&&!quizState.currentQ)renderQuizStart();
   // close mobile sidebar
   document.getElementById('sidebar').classList.remove('open');
@@ -164,10 +165,32 @@ window.resetProfile=function(){
 // JOURNEY
 function loadTimeline(){
   if(!profile)return;
-  fetch(BACKEND_URL+'/api/timeline/'+encodeURIComponent(profile.state)).then(function(r){return r.json();}).then(function(d){
-    timelineSteps=d.timeline||[];sessionStorage.setItem('eq_tl',JSON.stringify(timelineSteps));renderJourney();
-  }).catch(function(){
-    timelineSteps=[{id:1,title:'Check voter registration',description:'Verify your name on the electoral roll',deadline:'Before nomination period',icon:'📋',link:'https://voters.eci.gov.in',category:'Registration'},{id:2,title:'Register if not enrolled',description:'Submit Form 6 on NVSP portal',deadline:'30 days before polls',icon:'✍️',link:'https://voters.eci.gov.in/register-as-voter',category:'Registration'},{id:3,title:'Download voter ID',description:'Download e-EPIC from voterportal.eci.gov.in',deadline:'Anytime',icon:'🪪',link:'https://voterportal.eci.gov.in',category:'Identity'},{id:4,title:'Find your polling booth',description:'Search your booth address and serial number',deadline:'1 week before polling',icon:'📍',link:'https://voters.eci.gov.in',category:'Preparation'},{id:5,title:'Cast your vote',description:'Carry approved photo ID. Use EVM + VVPAT.',deadline:'Election day',icon:'🗳️',link:null,category:'Voting'},{id:6,title:'Track results',description:'Watch live results on results.eci.gov.in',deadline:'Results day',icon:'📊',link:'https://results.eci.gov.in',category:'Results'}];
+  
+  var controller = new AbortController();
+  var timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+  
+  fetch(BACKEND_URL+'/api/timeline/'+encodeURIComponent(profile.state), { signal: controller.signal })
+  .then(function(r){
+    if(!r.ok) throw new Error('API Error');
+    return r.json();
+  })
+  .then(function(d){
+    clearTimeout(timeoutId);
+    timelineSteps=d.timeline||[];
+    if(!timelineSteps.length) throw new Error('Empty timeline');
+    sessionStorage.setItem('eq_tl',JSON.stringify(timelineSteps));
+    renderJourney();
+  })
+  .catch(function(){
+    clearTimeout(timeoutId);
+    timelineSteps=[
+      {id:1,title:'Check voter registration',description:'Verify your name on the electoral roll',deadline:'Before nomination period',icon:'📋',link:'https://voters.eci.gov.in',category:'Registration'},
+      {id:2,title:'Register if not enrolled',description:'Submit Form 6 on NVSP portal',deadline:'30 days before polls',icon:'✍️',link:'https://voters.eci.gov.in/register-as-voter',category:'Registration'},
+      {id:3,title:'Download voter ID',description:'Download e-EPIC from voterportal.eci.gov.in',deadline:'Anytime',icon:'🪪',link:'https://voterportal.eci.gov.in',category:'Identity'},
+      {id:4,title:'Find your polling booth',description:'Search your booth address and serial number',deadline:'1 week before polling',icon:'📍',link:'https://voters.eci.gov.in',category:'Preparation'},
+      {id:5,title:'Cast your vote',description:'Carry approved photo ID. Use EVM + VVPAT.',deadline:'Election day',icon:'🗳️',link:null,category:'Voting'},
+      {id:6,title:'Track results',description:'Watch live results on results.eci.gov.in',deadline:'Results day',icon:'📊',link:'https://results.eci.gov.in',category:'Results'}
+    ];
     renderJourney();
   });
 }
@@ -348,6 +371,43 @@ window.openBoothMap = function() {
     window.open('https://www.google.com/maps/dir/?api=1&destination='+latLng[0]+','+latLng[1]);
   };
 };
+function renderGuide(){
+  var el=document.getElementById('view-guide');
+  el.innerHTML='<div class="guide-wrap">'+
+    '<div class="guide-hero">'+
+      '<div class="guide-hero-icon">💡</div>'+
+      '<h2>Welcome to ElectIQ</h2>'+
+      '<p>Your intelligent civic companion designed to simplify the Indian election process. ElectIQ uses Gemini AI to personalize your journey to the polling booth.</p>'+
+    '</div>'+
+    '<div class="guide-grid">'+
+      '<div class="guide-card">'+
+        '<div class="guide-card-icon">🗺️</div>'+
+        '<div class="guide-card-title">The Election Journey</div>'+
+        '<div class="guide-card-text">A step-by-step roadmap from registration to results day. Track your progress as you complete key civic milestones.</div>'+
+      '</div>'+
+      '<div class="guide-card">'+
+        '<div class="guide-card-icon">📋</div>'+
+        '<div class="guide-card-title">AI-Powered Checklist</div>'+
+        '<div class="guide-card-text">Gemini AI analyzes your profile to generate a custom document checklist. Know exactly what to bring based on your state and voter type.</div>'+
+      '</div>'+
+      '<div class="guide-card">'+
+        '<div class="guide-card-icon">💬</div>'+
+        '<div class="guide-card-title">Ask AI Anything</div>'+
+        '<div class="guide-card-text">Have a complex question about election laws or booth procedures? Our AI assistant provides instant, accurate answers in your regional language.</div>'+
+      '</div>'+
+      '<div class="guide-card">'+
+        '<div class="guide-card-icon">🧠</div>'+
+        '<div class="guide-card-title">Civic Knowledge Quiz</div>'+
+        '<div class="guide-card-text">Test your understanding of Indian democracy. The quiz adapts to your skill level, helping you become a more informed citizen.</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="guide-footer">'+
+      '<div style="font-size:15px;font-weight:600;margin-bottom:8px">Ready to start?</div>'+
+      '<button class="btn-primary" onclick="switchTab(\'home\')" style="max-width:200px;margin:0 auto">Go to Dashboard</button>'+
+    '</div>'+
+  '</div>';
+}
+
 // QUIZ
 function renderQuizStart(){
   var el=document.getElementById('view-quiz');

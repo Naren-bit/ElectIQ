@@ -192,11 +192,14 @@ async function initFirebase() {
 
   db = admin.database();
 
-  // Seed election timeline data if not present
+  // Seed election timeline data if not present or general key missing
   const snap = await db.ref('timelines').once('value');
-  if (!snap.exists()) {
-    console.log('[Firebase] Seeding election timeline data...');
-    await db.ref('timelines').set(ELECTION_TIMELINES);
+  const hasGeneral = snap.exists() && snap.child('general').exists();
+  
+  if (!snap.exists() || !hasGeneral) {
+    console.log('[Firebase] Seeding/Updating election timeline data...');
+    // Use update to merge instead of set to overwrite everything
+    await db.ref('timelines').update(ELECTION_TIMELINES);
   }
 }
 
@@ -323,7 +326,13 @@ async function getTimeline(state) {
 
   // Fall back to general timeline
   const generalSnap = await getDB().ref('timelines/general').once('value');
-  return generalSnap.exists() ? Object.values(generalSnap.val()) : [];
+  if (generalSnap.exists()) return Object.values(generalSnap.val());
+
+  // Final hardcoded safety fallback if database is empty
+  return [
+    { id: 1, title: 'Check voter registration', description: 'Verify your name on the electoral roll', deadline: 'Before polls', icon: '📋', category: 'Registration' },
+    { id: 2, title: 'Cast your vote', description: 'Carry approved ID to your polling booth', deadline: 'Election day', icon: '🗳️', category: 'Voting' }
+  ];
 }
 
 /* ------------------------------------------------------------------ */
