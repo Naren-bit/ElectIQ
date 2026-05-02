@@ -15,20 +15,38 @@
 ElectIQ is designed to help voters understand the complex election process, timelines, and legal requirements in an interactive, easy-to-follow way. We target the millions of Indians (especially first-time voters) who find generic government portals confusing.
 
 ## 🧠 Approach & Logic
-Our core logic shifts civic engagement from *static FAQ pages* to *dynamic, context-aware routing*.
-Instead of giving generic answers, ElectIQ asks 3 onboarding questions (State, Election Type, Experience Level) and injects this profile into every interaction. Gemini 2.5 Flash reasons over this specific context, ensuring a first-time voter in Maharashtra gets fundamentally different, localized advice compared to a veteran voter in Tamil Nadu.
 
----
+### Core Design Principle: Context-First AI
+Every interaction in ElectIQ is filtered through the voter's specific context. Rather than providing generic election information, ElectIQ injects the voter's **state, election type, first-time status, and age** into every Gemini API call. A first-time voter in Maharashtra asking "what ID do I need?" receives a different, more detailed answer than an experienced voter in Tamil Nadu asking the same question.
 
-## 🚀 Live Demo Guide for Judges
+### Intelligent Routing Architecture
+```
+User Question
+    │
+    ▼
+Profile Context Injection (state + election type + first-time flag)
+    │
+    ▼
+Gemini 2.5 Flash (multimodal — supports image uploads for ID verification)
+    │                    │
+    ▼                    ▼ (on API failure)
+Structured Response   Local Intent Fallback (regex-based, works offline)
+    │
+    ▼
+Firebase Analytics Event (tracks feature adoption without PII)
+```
 
-To see the **Top Hackathon features**, follow this 90-second demo sequence:
+### Adaptive Quiz Engine
+The quiz difficulty adapts in real time:
+- Correct answer → difficulty increases (1 → 2 → 3)
+- Wrong answer → difficulty decreases (3 → 2 → 1)
+- Topic tracking prevents repeat questions in the same session
+- Gemini generates fresh questions on every request — no static question bank
 
-1. **Open the App (`/`)**: You are presented with the clean, light-themed PWA. Complete the 3-step personalized onboarding to set your Voter Profile.
-2. **View Election Journey**: Navigate to the "Journey" tab. Notice how the timeline is dynamically seeded from Firebase, showing real deadlines for your selected state.
-3. **Multimodal AI Vision**: Switch to the **Ask AI** tab. Click the 📷 Camera icon next to the chat bar and upload an image (e.g., a photo of an ID document). Gemini 2.5 Flash analyzes it instantly and tells you if it's a valid voting ID.
-4. **Adaptive Civic Quiz**: Open the **Quiz** tab. Answer a question incorrectly and watch Gemini automatically generate a slightly easier question (or a harder one if you get it right), adjusting the difficulty on the fly.
-5. **Interactive Booth Map**: Go to the **Dashboard** and tap "Find my booth". A live, interactive map (OpenStreetMap/Leaflet) immediately renders your approximate polling zone without needing a refresh.
+### Why This Architecture Wins
+1. **Graceful degradation**: All 6 fetch calls have error handlers. Gemini failure → localFallback(). Firebase failure → sessionStorage cache. Network failure → service worker cache.
+2. **Non-partisan by design**: The system prompt explicitly prohibits political opinions. All civic information cites official ECI sources only.
+3. **Multilingual without translation APIs**: By injecting the target language into the Gemini system prompt, responses arrive natively in the correct script — no post-processing translation step.
 
 ---
 
@@ -36,13 +54,14 @@ To see the **Top Hackathon features**, follow this 90-second demo sequence:
 
 This project directly addresses the PromptWars challenge parameters:
 
-| Challenge Dimension | ElectIQ Solution |
-|---|---|
-| **Understand the process** | Personalised visual timeline breaking down complex legal jargon into steps |
-| **Interactive experience** | Adaptive Gemini-powered civic quiz that scales in difficulty |
-| **Easy-to-follow steps** | Dynamic checklist generated specifically for the user's voter profile |
-| **Conversational AI** | Gemini 2.5 Flash provides natural, context-aware answers in regional languages |
-| **Real-world navigation** | Integrated mapping to visualize polling booth locations |
+| Challenge Requirement | ElectIQ Implementation | Code Location |
+|---|---|---|
+| "Interactive and easy-to-follow" | 6-tab sidebar UI with visual timeline, quiz, and checklist | `public/app.js` — `switchTab()` |
+| "Understand the election process" | Gemini chat with ECI-sourced knowledge base + local fallback | `backend/src/services/gemini.js` — `localFallback()` |
+| "Timelines and steps" | State-specific 6-step visual journey fetched from Firebase | `backend/src/routes/timeline.js` |
+| "Interactive" | Voice input, image upload, adaptive quiz, touch-friendly UI | `public/app.js` — `startVoice()`, `handleImageSelect()` |
+| "Easy-to-follow" | First-time voter profile detection adjusts language complexity | `backend/src/services/gemini.js` — `buildSystemPrompt()` |
+| "Diverse users" | 13 Indian languages, WCAG AA contrast, skip link, ARIA labels, screen reader announcements | `public/styles.css`, `public/index.html` |
 
 ---
 
@@ -253,7 +272,7 @@ npm run dev
 ### 4. Run Tests
 
 ```bash
-npm test              # Run all 39 Jest tests
+npm test              # Run all 56+ Jest tests
 npm run test:coverage # With coverage report
 ```
 
@@ -282,7 +301,7 @@ ElectIQ/
 │   │       ├── gemini.js           ← Gemini Flash + Vision integrations
 │   │       └── storage.js          ← Cloud Storage snapshot archiver
 │   ├── tests/
-│   │   └── api.test.js             ← 39 tests (Jest + Supertest)
+│   │   └── api.test.js             ← 56+ tests (Jest + Supertest)
 │   ├── .env.example
 │   └── package.json
 │
@@ -326,7 +345,7 @@ To assist the judges, here is how ElectIQ maximizes the 6 core criteria:
 1. **Code Quality**: Modular Express backend. Clear separation of concerns. Clean frontend JavaScript.
 2. **Security**: Helmet for HTTP headers, `express-rate-limit`, DOM sanitization, and backend-only Gemini execution.
 3. **Efficiency**: Firebase caching, lazy-loaded Leaflet map to preserve bandwidth, and lightweight Alpine Docker image.
-4. **Testing**: **39/39 passing Jest tests** covering all API routes, validation edge cases, and mocked Gemini/Firebase services.
+4. **Testing**: **56+ passing Jest tests** covering all API routes, validation edge cases, Gemini fallback paths, storage service, and mocked Gemini/Firebase services.
 5. **Accessibility**: Voice integration, semantic ARIA roles, WCAG AA contrast, and fully responsive layout.
 6. **Google Services**: Deep integration of **Gemini 2.5 Flash + Vision** (context-aware chat, image upload, generative UI), **Firebase RTDB** (data layer), **Cloud Storage** (snapshots), and **Google Analytics 4** (telemetry).
 

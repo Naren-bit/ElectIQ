@@ -145,6 +145,15 @@ app.use(helmet({
 // CORS
 app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
 
+// Permissions-Policy — restrict access to sensitive browser APIs
+app.use((_req, res, next) => {
+  res.setHeader(
+    'Permissions-Policy',
+    'camera=(), microphone=(), geolocation=(), payment=(), usb=()'
+  );
+  next();
+});
+
 // Logging
 app.use(requestLogger);
 

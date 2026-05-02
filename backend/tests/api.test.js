@@ -601,3 +601,92 @@ describe('API edge cases', () => {
     expect(Array.isArray(res.body.checklist)).toBe(true);
   });
 });
+
+/* ================================================================== */
+/*  /api/languages endpoint — extended                                 */
+/* ================================================================== */
+
+describe('GET /api/languages — extended', () => {
+  it('returns a map of all Indian states to their regional languages', async () => {
+    const res = await request(app).get('/api/languages');
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('languages');
+    expect(typeof res.body.languages).toBe('object');
+    expect(res.body.languages).toHaveProperty('Maharashtra');
+    expect(res.body.languages['Tamil Nadu']).toBe('Tamil');
+  });
+});
+
+/* ================================================================== */
+/*  Gemini fallback path                                               */
+/* ================================================================== */
+
+describe('POST /api/chat — Gemini fallback behaviour', () => {
+  it('returns a valid reply even when Gemini throws (uses localFallback)', async () => {
+    const gemini = require('../src/services/gemini');
+    const originalChat = gemini.chat;
+    gemini.chat = jest.fn().mockRejectedValueOnce(new Error('Gemini API timeout'));
+
+    const res = await request(app)
+      .post('/api/chat')
+      .send({
+        message: 'How do I register to vote?',
+        profile: { state: 'Maharashtra' },
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.reply).toBeTruthy();
+    expect(typeof res.body.reply).toBe('string');
+
+    gemini.chat = originalChat;
+  });
+});
+
+/* ================================================================== */
+/*  Storage service unit tests                                         */
+/* ================================================================== */
+
+describe('Storage service', () => {
+  it('initStorage handles missing GCLOUD_STORAGE_BUCKET gracefully', () => {
+    const { initStorage } = require('../src/services/storage');
+    const original = process.env.GCLOUD_STORAGE_BUCKET;
+    delete process.env.GCLOUD_STORAGE_BUCKET;
+    expect(() => initStorage()).not.toThrow();
+    process.env.GCLOUD_STORAGE_BUCKET = original;
+  });
+
+  it('uploadAnalyticsSnapshot is a function', () => {
+    const { uploadAnalyticsSnapshot } = require('../src/services/storage');
+    expect(typeof uploadAnalyticsSnapshot).toBe('function');
+  });
+
+  it('uploadAnalyticsSnapshot returns a Promise', () => {
+    const { uploadAnalyticsSnapshot } = require('../src/services/storage');
+    const result = uploadAnalyticsSnapshot();
+    expect(result).toBeInstanceOf(Promise);
+    return result;
+  });
+});
+
+/* ================================================================== */
+/*  Session ID validation — extended                                   */
+/* ================================================================== */
+
+describe('GET /api/checklist/progress/:sessionId — extended validation', () => {
+  it('rejects sessionId that is too short (< 8 chars)', async () => {
+    const res = await request(app).get('/api/checklist/progress/abc');
+    expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty('error');
+  });
+
+  it('rejects sessionId with path traversal characters', async () => {
+    const res = await request(app).get('/api/checklist/progress/../../../etc/passwd');
+    expect(res.status).not.toBe(200);
+  });
+
+  it('accepts valid sessionId format', async () => {
+    const res = await request(app).get('/api/checklist/progress/eq-abc123-xyz456');
+    expect(res.status).toBe(200);
+  });
+});
+

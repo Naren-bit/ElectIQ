@@ -1,33 +1,184 @@
+/**
+ * @fileoverview ElectIQ frontend application.
+ * Manages UI state, tab navigation, Gemini AI chat, adaptive quiz,
+ * personalised checklist, and election journey timeline.
+ *
+ * Google services used client-side:
+ *  - Firebase Analytics (GA4) via compat SDK
+ *  - Leaflet map (OpenStreetMap, Google Maps-compatible coordinates)
+ *
+ * @module app
+ */
+
 'use strict';
-var BACKEND_URL=location.origin;
-var sessionId='eq-'+Math.random().toString(36).slice(2,10)+'-'+Date.now().toString(36);
-var profile=JSON.parse(sessionStorage.getItem('eq_profile')||'null');
-var conversationHistory=[];
-var isThinking=false;
-var activeTab='guide';
-var timelineSteps=[];
-var completedSteps=JSON.parse(sessionStorage.getItem('eq_steps')||'{}');
-var checklistItems=[];
-var checklistLoading=false;
-var checklistProgress=JSON.parse(sessionStorage.getItem('eq_cl')||'{}');
-var quizState={score:0,total:0,streak:0,difficulty:1,topics:[],currentQ:null,answered:false};
-var currentLang=sessionStorage.getItem('eq_lang')||'English';
-var STATE_LANGUAGES={'Andhra Pradesh':'Telugu','Arunachal Pradesh':'English','Assam':'Assamese','Bihar':'Hindi','Chhattisgarh':'Hindi','Goa':'Konkani','Gujarat':'Gujarati','Haryana':'Hindi','Himachal Pradesh':'Hindi','Jharkhand':'Hindi','Karnataka':'Kannada','Kerala':'Malayalam','Madhya Pradesh':'Hindi','Maharashtra':'Marathi','Manipur':'Manipuri','Meghalaya':'English','Mizoram':'Mizo','Nagaland':'English','Odisha':'Odia','Punjab':'Punjabi','Rajasthan':'Hindi','Sikkim':'Nepali','Tamil Nadu':'Tamil','Telangana':'Telugu','Tripura':'Bengali','Uttar Pradesh':'Hindi','Uttarakhand':'Hindi','West Bengal':'Bengali','Delhi':'Hindi','Jammu & Kashmir':'Urdu','Ladakh':'Hindi','Puducherry':'Tamil','Chandigarh':'Hindi'};
 
-var INDIAN_STATES=['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Delhi','Jammu & Kashmir','Ladakh','Puducherry','Chandigarh'];
+/* ------------------------------------------------------------------ */
+/*  State variables                                                    */
+/* ------------------------------------------------------------------ */
 
-var TAB_TITLES={home:'Dashboard',journey:'Election Journey',chat:'Ask AI',checklist:'Preparation Checklist',guide:'Election Guide',quiz:'Civic Quiz'};
+/** @type {string} Backend API base URL (same origin) */
+var BACKEND_URL = location.origin;
 
-function escapeHtml(s){if(!s)return'';return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function formatBot(t){return t.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');}
-function announce(msg){var el=document.getElementById('live-announce');if(el){el.textContent=msg;setTimeout(function(){el.textContent='';},3000);}}
-function getTS(){var d=new Date();return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
+/** @type {string} Unique session identifier for Firebase tracking */
+var sessionId = 'eq-' + Math.random().toString(36).slice(2, 10) + '-' + Date.now().toString(36);
 
-window.gaLogEvent = function(name, params) {
-  if (window.analytics) window.analytics.logEvent(name, params);
+/** @type {Object|null} Voter profile (state, electionType, isFirstTime, age) */
+var profile = JSON.parse(sessionStorage.getItem('eq_profile') || 'null');
+
+/** @type {Array<Object>} Multi-turn conversation history for Gemini context */
+var conversationHistory = [];
+
+/** @type {boolean} Whether the AI is currently generating a response */
+var isThinking = false;
+
+/** @type {string} Currently active tab identifier */
+var activeTab = 'guide';
+
+/** @type {Array<Object>} Election journey timeline steps from Firebase */
+var timelineSteps = [];
+
+/** @type {Object} Map of completed step IDs to boolean */
+var completedSteps = JSON.parse(sessionStorage.getItem('eq_steps') || '{}');
+
+/** @type {Array<Object>} Gemini-generated checklist items */
+var checklistItems = [];
+
+/** @type {boolean} Whether checklist is currently loading from API */
+var checklistLoading = false;
+
+/** @type {Object} Map of checklist item IDs to completion status */
+var checklistProgress = JSON.parse(sessionStorage.getItem('eq_cl') || '{}');
+
+/** @type {Object} Quiz engine state — score, streak, difficulty, current question */
+var quizState = {
+  score: 0,
+  total: 0,
+  streak: 0,
+  difficulty: 1,
+  topics: [],
+  currentQ: null,
+  answered: false,
 };
 
-// IMAGE UPLOAD STATE
+/** @type {string} Current UI language (English or regional) */
+var currentLang = sessionStorage.getItem('eq_lang') || 'English';
+
+/**
+ * Map of Indian states to their primary regional language.
+ * Used for multilingual Gemini prompts and UI localisation.
+ *
+ * @type {Object<string, string>}
+ */
+var STATE_LANGUAGES = {
+  'Andhra Pradesh': 'Telugu', 'Arunachal Pradesh': 'English',
+  'Assam': 'Assamese', 'Bihar': 'Hindi', 'Chhattisgarh': 'Hindi',
+  'Goa': 'Konkani', 'Gujarat': 'Gujarati', 'Haryana': 'Hindi',
+  'Himachal Pradesh': 'Hindi', 'Jharkhand': 'Hindi',
+  'Karnataka': 'Kannada', 'Kerala': 'Malayalam',
+  'Madhya Pradesh': 'Hindi', 'Maharashtra': 'Marathi',
+  'Manipur': 'Manipuri', 'Meghalaya': 'English', 'Mizoram': 'Mizo',
+  'Nagaland': 'English', 'Odisha': 'Odia', 'Punjab': 'Punjabi',
+  'Rajasthan': 'Hindi', 'Sikkim': 'Nepali', 'Tamil Nadu': 'Tamil',
+  'Telangana': 'Telugu', 'Tripura': 'Bengali',
+  'Uttar Pradesh': 'Hindi', 'Uttarakhand': 'Hindi',
+  'West Bengal': 'Bengali', 'Delhi': 'Hindi',
+  'Jammu & Kashmir': 'Urdu', 'Ladakh': 'Hindi',
+  'Puducherry': 'Tamil', 'Chandigarh': 'Hindi',
+};
+
+/** @type {Array<string>} All Indian states and UTs for the onboarding dropdown */
+var INDIAN_STATES = [
+  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+  'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+  'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya',
+  'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim',
+  'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand',
+  'West Bengal', 'Delhi', 'Jammu & Kashmir', 'Ladakh', 'Puducherry',
+  'Chandigarh',
+];
+
+/** @type {Object<string, string>} Human-readable titles for each tab */
+var TAB_TITLES = {
+  home: 'Dashboard',
+  journey: 'Election Journey',
+  chat: 'Ask AI',
+  checklist: 'Preparation Checklist',
+  guide: 'Election Guide',
+  quiz: 'Civic Quiz',
+};
+
+/* ------------------------------------------------------------------ */
+/*  Utility helpers                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Escape HTML special characters to prevent XSS in rendered content.
+ *
+ * @param {string} s - Raw string to escape
+ * @returns {string} HTML-safe string
+ */
+function escapeHtml(s) {
+  if (!s) { return ''; }
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/**
+ * Convert Gemini markdown bold syntax (**text**) to HTML strong tags.
+ *
+ * @param {string} text - Raw Gemini response text
+ * @returns {string} HTML string with bold formatting
+ */
+function formatBot(text) {
+  return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+}
+
+/**
+ * Announce a message to screen readers via the ARIA live region.
+ * Clears the message after 3 seconds to avoid stale announcements.
+ *
+ * @param {string} msg - Message to announce
+ */
+function announce(msg) {
+  var el = document.getElementById('live-announce');
+  if (el) {
+    el.textContent = msg;
+    setTimeout(function () { el.textContent = ''; }, 3000);
+  }
+}
+
+/**
+ * Get the current time as HH:MM string in 24-hour format.
+ *
+ * @returns {string} Formatted time string, e.g. "14:05"
+ */
+function getTS() {
+  var d = new Date();
+  return d.getHours().toString().padStart(2, '0') + ':' +
+         d.getMinutes().toString().padStart(2, '0');
+}
+
+/* ------------------------------------------------------------------ */
+/*  Analytics helpers                                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Log a custom event to Firebase Analytics (GA4).
+ * No-op if the Firebase SDK is not initialised.
+ *
+ * @param {string} name   - Event name (e.g. 'tab_viewed')
+ * @param {Object} params - Key-value event parameters
+ */
+window.gaLogEvent = function(name, params) {
+  if (window.analytics) { window.analytics.logEvent(name, params); }
+};
+
+/* ------------------------------------------------------------------ */
+/*  Image upload                                                       */
+/* ------------------------------------------------------------------ */
 var selectedImageBase64 = null;
 window.handleImageSelect = function(e) {
   var file = e.target.files[0];
@@ -51,7 +202,14 @@ window.removeImage = function() {
   if (container) container.style.display = 'none';
 };
 
-// CLOCK
+/* ------------------------------------------------------------------ */
+/*  Clock                                                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Update the topbar clock display with the current IST time.
+ * Called every second via setInterval.
+ */
 function updateClock(){
   var now=new Date();
   var el=document.getElementById('topbar-time');
@@ -59,17 +217,46 @@ function updateClock(){
 }
 setInterval(updateClock,1000);updateClock();
 
-// SPLASH
-window.addEventListener('load',function(){setTimeout(function(){var sp=document.getElementById('splash');if(sp){sp.style.opacity='0';sp.style.visibility='hidden';setTimeout(function(){sp.remove();},600);}},1800);});
+/* ------------------------------------------------------------------ */
+/*  Splash screen                                                      */
+/* ------------------------------------------------------------------ */
 
-// SIDEBAR MOBILE TOGGLE
-window.toggleSidebar=function(){
+/** Remove the splash screen 1.8 seconds after page load */
+window.addEventListener('load', function () {
+  setTimeout(function () {
+    var sp = document.getElementById('splash');
+    if (sp) {
+      sp.style.opacity = '0';
+      sp.style.visibility = 'hidden';
+      setTimeout(function () { sp.remove(); }, 600);
+    }
+  }, 1800);
+});
+
+/* ------------------------------------------------------------------ */
+/*  Sidebar & navigation                                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Toggle the mobile sidebar drawer open/closed.
+ * Also toggles the overlay backdrop for dismissal.
+ */
+window.toggleSidebar = function () {
   document.getElementById('sidebar').classList.toggle('open');
   document.getElementById('sidebar-overlay').classList.toggle('open');
 };
 
-// TAB SWITCHING
-window.switchTab=function(tab){
+/* ------------------------------------------------------------------ */
+/*  Tab switching                                                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Switch the active tab panel, update sidebar highlights,
+ * topbar breadcrumb, and trigger the appropriate render function.
+ *
+ * @param {string} tab - Tab identifier (home, journey, chat, checklist, guide, quiz)
+ */
+window.switchTab = function (tab) {
   activeTab=tab;
   document.querySelectorAll('.nav-item').forEach(function(t){
     var isA=t.dataset.tab===tab;
@@ -96,7 +283,11 @@ window.switchTab=function(tab){
   window.gaLogEvent('tab_viewed', { tab: tab });
 };
 
-// SIDEBAR KEYBOARD NAV
+/* ------------------------------------------------------------------ */
+/*  Keyboard navigation                                                */
+/* ------------------------------------------------------------------ */
+
+/** Handle ArrowUp/ArrowDown to cycle through sidebar tabs */
 document.querySelector('.sidebar-nav').addEventListener('keydown',function(e){
   if(e.key==='ArrowDown'||e.key==='ArrowUp'){
     var items=Array.from(document.querySelectorAll('.nav-item'));
@@ -124,7 +315,15 @@ function updateSidebarProfile(){
   }
 }
 
-// HOME / DASHBOARD
+/* ------------------------------------------------------------------ */
+/*  Dashboard rendering                                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Render the home/dashboard panel.
+ * Shows the onboarding form if no profile exists, otherwise
+ * displays stats, progress bars, and quick-action cards.
+ */
 function renderHome(){
   var el=document.getElementById('view-home');
   if(!profile){
@@ -162,7 +361,15 @@ window.resetProfile=function(){
   updateSidebarProfile();renderHome();
 };
 
-// JOURNEY
+/* ------------------------------------------------------------------ */
+/*  Election timeline                                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Load election timeline steps from the backend API.
+ * Uses a 10-second timeout with AbortController; falls back to
+ * a hardcoded 6-step general timeline on failure.
+ */
 function loadTimeline(){
   if(!profile)return;
   
@@ -213,7 +420,16 @@ window.toggleStep=function(id){
   if(completedSteps[id] && profile) window.gaLogEvent('timeline_step_completed', { step: id, state: profile.state });
 };
 
-// CHAT
+/* ------------------------------------------------------------------ */
+/*  AI chat                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Append a chat message bubble to the conversation panel.
+ *
+ * @param {string} text - Message content
+ * @param {string} role - 'user' or 'bot'
+ */
 function addMessage(text,role){
   var cm=document.getElementById('chat-messages');if(!cm)return;
   var ts=getTS();
@@ -224,7 +440,11 @@ function addMessage(text,role){
   }
   cm.scrollTop=cm.scrollHeight;
 }
+
+/** Show the animated typing indicator in the chat panel. */
 function showTyping(){var cm=document.getElementById('chat-messages');if(!cm)return;cm.innerHTML+='<div class="typing" id="typing-ind"><span></span><span></span><span></span></div>';cm.scrollTop=cm.scrollHeight;}
+
+/** Remove the typing indicator once the AI response arrives. */
 function hideTyping(){var t=document.getElementById('typing-ind');if(t)t.remove();}
 
 window.handleSend=function(){
@@ -263,7 +483,14 @@ document.getElementById('chat-input').addEventListener('keydown',function(e){
   if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleSend();}
 });
 
-// CHECKLIST
+/* ------------------------------------------------------------------ */
+/*  Document checklist                                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Load a personalised document checklist from the Gemini backend.
+ * Uses a 12-second timeout; falls back to a hardcoded 8-item list on failure.
+ */
 function loadChecklist(){
   if(!profile||checklistLoading)return;
   checklistLoading=true;
@@ -336,7 +563,9 @@ window.toggleCL=function(id){
   fetch(BACKEND_URL+'/api/checklist/progress',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:sessionId,itemId:id,completed:!!checklistProgress[id]})}).catch(function(){});
 };
 
-// BOOTH MAP
+/* ------------------------------------------------------------------ */
+/*  Booth map (Leaflet / OpenStreetMap)                                */
+/* ------------------------------------------------------------------ */
 var boothMapInstance = null;
 window.openBoothMap = function() {
   var container = document.getElementById('booth-map-container');
@@ -371,6 +600,14 @@ window.openBoothMap = function() {
     window.open('https://www.google.com/maps/dir/?api=1&destination='+latLng[0]+','+latLng[1]);
   };
 };
+/* ------------------------------------------------------------------ */
+/*  Election guide                                                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Render the Election Guide panel with feature overview cards.
+ * Provides an onboarding walkthrough explaining each ElectIQ feature.
+ */
 function renderGuide(){
   var el=document.getElementById('view-guide');
   el.innerHTML='<div class="guide-wrap">'+
@@ -408,7 +645,13 @@ function renderGuide(){
   '</div>';
 }
 
-// QUIZ
+/* ------------------------------------------------------------------ */
+/*  Civic quiz                                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Render the quiz start screen with difficulty info and start button.
+ */
 function renderQuizStart(){
   var el=document.getElementById('view-quiz');
   el.innerHTML='<div class="quiz-wrap"><div class="quiz-start"><div class="quiz-start-icon">🧠</div><div style="font-size:22px;font-weight:700;margin-bottom:8px">Civic Knowledge Quiz</div><div style="font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.6">Test your knowledge of the Indian election process.<br>Questions adapt to your level — powered by Gemini AI.</div><button class="btn-primary" onclick="fetchQuizQuestion()" style="max-width:260px;margin:0 auto">Start Quiz</button></div></div>';
@@ -477,8 +720,21 @@ window.answerQuiz=function(idx){
   announce(correct?'Correct answer!':'Incorrect. The right answer was '+q.options[q.correctIndex]);
 };
 
-// VOICE
-var recognition=null;var synthesis=window.speechSynthesis;var voiceActive=false;
+/* ------------------------------------------------------------------ */
+/*  Voice input                                                        */
+/* ------------------------------------------------------------------ */
+
+/** @type {SpeechRecognition|null} Web Speech API recognition instance */
+var recognition=null;
+/** @type {SpeechSynthesis} Browser text-to-speech synthesis instance */
+var synthesis=window.speechSynthesis;
+/** @type {boolean} Whether voice recognition is currently active */
+var voiceActive=false;
+
+/**
+ * Initialise the Web Speech API recognition engine.
+ * Sets up event handlers for start, result, end, and error events.
+ */
 function initVoice(){
   var SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return;
   recognition=new SR();recognition.continuous=false;recognition.interimResults=true;recognition.lang='en-IN';
@@ -491,7 +747,9 @@ window.startVoice=function(){if(!recognition)return;if(synthesis)synthesis.cance
 window.stopVoice=function(){if(!recognition||!voiceActive)return;try{recognition.stop();voiceActive=false;}catch(e){}};
 function speakResponse(text){if(!synthesis)return;synthesis.cancel();var c=text.replace(/\*\*(.*?)\*\*/g,'$1').replace(/[*_`]/g,'');var u=new SpeechSynthesisUtterance(c);u.rate=1.05;u.pitch=1.0;u.volume=0.9;u.lang='en-IN';synthesis.speak(u);}
 
-// LANGUAGE TOGGLE
+/* ------------------------------------------------------------------ */
+/*  Language selection                                                 */
+/* ------------------------------------------------------------------ */
 function getRegionalLang(){
   if(!profile||!profile.state)return null;
   var lang=STATE_LANGUAGES[profile.state];
@@ -519,7 +777,15 @@ window.setLang=function(lang){
   announce('Language set to '+lang);
 };
 
-// BOOT
+/* ------------------------------------------------------------------ */
+/*  Boot                                                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Application bootstrap — runs immediately on script load.
+ * Initialises the sidebar profile, loads cached data, and renders
+ * the default Guide tab.
+ */
 (function boot(){
   updateSidebarProfile();
   if(profile){loadTimeline();var cached=sessionStorage.getItem('eq_cli');if(cached){try{checklistItems=JSON.parse(cached);}catch(e){}}}
