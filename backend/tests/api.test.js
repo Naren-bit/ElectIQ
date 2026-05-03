@@ -690,3 +690,356 @@ describe('GET /api/checklist/progress/:sessionId — extended validation', () =>
   });
 });
 
+/* ================================================================== */
+/*  errorHandler middleware — direct unit tests                        */
+/* ================================================================== */
+
+describe('errorHandler middleware', () => {
+  const { errorHandler } = require('../src/middleware/errorHandler');
+
+  it('returns 500 with error message for generic errors', () => {
+    const err = new Error('Something went wrong');
+    const req = { method: 'GET', path: '/api/test' };
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+    errorHandler(err, req, res, jest.fn());
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'Something went wrong' }));
+  });
+
+  it('uses err.status when provided', () => {
+    const err = new Error('Not found');
+    err.status = 404;
+    const req = { method: 'GET', path: '/missing' };
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+    errorHandler(err, req, res, jest.fn());
+    expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it('falls back to "Internal server error" when err.message is empty', () => {
+    const err = new Error('');
+    const req = { method: 'POST', path: '/api/chat' };
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+    errorHandler(err, req, res, jest.fn());
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: expect.any(String) }));
+  });
+
+  it('includes stack in non-production', () => {
+    const orig = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'development';
+    const err = new Error('Dev err');
+    const req = { method: 'GET', path: '/t' };
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+    errorHandler(err, req, res, jest.fn());
+    expect(res.json.mock.calls[0][0]).toHaveProperty('stack');
+    process.env.NODE_ENV = orig;
+  });
+
+  it('omits stack in production', () => {
+    const orig = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    const err = new Error('Prod err');
+    const req = { method: 'GET', path: '/t' };
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+    errorHandler(err, req, res, jest.fn());
+    expect(res.json.mock.calls[0][0]).not.toHaveProperty('stack');
+    process.env.NODE_ENV = orig;
+  });
+});
+
+/* ================================================================== */
+/*  requestLogger middleware — direct unit tests                       */
+/* ================================================================== */
+
+describe('requestLogger middleware', () => {
+  const { requestLogger } = require('../src/middleware/requestLogger');
+
+  it('calls next() immediately', () => {
+    const req = { method: 'GET', path: '/health' };
+    const res = { send: jest.fn(), on: jest.fn(), setHeader: jest.fn(), headersSent: false };
+    const next = jest.fn();
+    requestLogger(req, res, next);
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it('patches res.send and sets X-Response-Time', () => {
+    const req = { method: 'GET', path: '/test' };
+    const headers = {};
+    const res = {
+      on: jest.fn(),
+      headersSent: false,
+      setHeader: jest.fn((k, v) => { headers[k] = v; }),
+      statusCode: 200,
+    };
+    // Store original send
+    const originalSend = jest.fn().mockReturnValue(res);
+    res.send = originalSend;
+    const next = jest.fn();
+
+    requestLogger(req, res, next);
+    // Now res.send is wrapped — call it
+    res.send('body');
+    expect(headers['X-Response-Time']).toMatch(/\d+ms/);
+  });
+});
+
+/* ================================================================== */
+/*  Route error paths — catch block coverage                          */
+/* ================================================================== */
+
+describe('Route error paths (catch block coverage)', () => {
+  let gemini, firebase;
+
+  beforeEach(() => {
+    gemini = require('../src/services/gemini');
+    firebase = require('../src/services/firebase');
+  });
+
+  it('POST /api/chat — outer catch triggers when chat AND localFallback both throw', async () => {
+    gemini.chat.mockRejectedValueOnce(new Error('Gemini down'));
+    gemini.localFallback.mockImplementationOnce(() => { throw new Error('Fallback crash'); });
+    const res = await request(app).post('/api/chat').send({ message: 'test error path' });
+    expect(res.status).toBe(500);
+  });
+
+  it('POST /api/chat — inner catch triggers localFallback on Gemini error', async () => {
+    gemini.chat.mockRejectedValueOnce(new Error('Gemini quota'));
+    const res = await request(app).post('/api/chat').send({ message: 'test fallback path' });
+    expect(res.status).toBe(200);
+    expect(res.body.reply).toBeTruthy();
+  });
+
+  it('GET /api/quiz/question — catch block on generateQuizQuestion failure', async () => {
+    gemini.generateQuizQuestion.mockRejectedValueOnce(new Error('Gemini quota'));
+    const res = await request(app).get('/api/quiz/question?difficulty=1');
+    expect(res.status).toBe(500);
+  });
+
+  it('POST /api/quiz/answer — catch block on recordQuizResult failure', async () => {
+    firebase.recordQuizResult.mockRejectedValueOnce(new Error('DB write failed'));
+    const res = await request(app).post('/api/quiz/answer').send({
+      sessionId: 'err-001', correct: true, difficulty: 1,
+    });
+    expect(res.status).toBe(500);
+  });
+
+  it('GET /api/timeline/:state — catch block on getTimeline failure', async () => {
+    firebase.getTimeline.mockRejectedValueOnce(new Error('Firebase down'));
+    const res = await request(app).get('/api/timeline/Maharashtra');
+    expect(res.status).toBe(500);
+  });
+
+  it('POST /api/checklist/generate — catch block on generateChecklist failure', async () => {
+    gemini.generateChecklist.mockRejectedValueOnce(new Error('Token limit'));
+    const res = await request(app).post('/api/checklist/generate').send({ profile: { state: 'Delhi' } });
+    expect(res.status).toBe(500);
+  });
+
+  it('POST /api/checklist/progress — catch block on saveChecklistProgress failure', async () => {
+    firebase.saveChecklistProgress.mockRejectedValueOnce(new Error('Quota exceeded'));
+    const res = await request(app).post('/api/checklist/progress').send({
+      sessionId: 'err-001', itemId: 'item-1', completed: true,
+    });
+    expect(res.status).toBe(500);
+  });
+
+  it('GET /api/checklist/progress/:sessionId — catch block on getChecklistProgress failure', async () => {
+    firebase.getChecklistProgress.mockRejectedValueOnce(new Error('Read failed'));
+    const res = await request(app).get('/api/checklist/progress/valid-session-id-abc');
+    expect(res.status).toBe(500);
+  });
+});
+
+/* ================================================================== */
+/*  Storage service — full bucket path coverage                       */
+/* ================================================================== */
+
+describe('Storage service — full coverage', () => {
+  it('initStorage warns when bucket env var missing', () => {
+    jest.resetModules();
+    jest.mock('../src/services/firebase', () => ({
+      initFirebase: jest.fn(), getDB: jest.fn(), saveSession: jest.fn(),
+      recordQuizResult: jest.fn(), saveChecklistProgress: jest.fn(),
+      getChecklistProgress: jest.fn(), trackEvent: jest.fn(), getTimeline: jest.fn(),
+    }));
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const orig = process.env.GCLOUD_STORAGE_BUCKET;
+    delete process.env.GCLOUD_STORAGE_BUCKET;
+    const s = require('../src/services/storage');
+    s.initStorage();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('GCLOUD_STORAGE_BUCKET'));
+    process.env.GCLOUD_STORAGE_BUCKET = orig;
+    warn.mockRestore();
+  });
+
+  it('initStorage catches getStorage() errors gracefully', () => {
+    jest.resetModules();
+    jest.mock('../src/services/firebase', () => ({
+      initFirebase: jest.fn(), getDB: jest.fn(), saveSession: jest.fn(),
+      recordQuizResult: jest.fn(), saveChecklistProgress: jest.fn(),
+      getChecklistProgress: jest.fn(), trackEvent: jest.fn(), getTimeline: jest.fn(),
+    }));
+    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    process.env.GCLOUD_STORAGE_BUCKET = 'test-bucket';
+    const s = require('../src/services/storage');
+    expect(() => s.initStorage()).not.toThrow();
+    delete process.env.GCLOUD_STORAGE_BUCKET;
+    errSpy.mockRestore();
+  });
+
+  it('uploadAnalyticsSnapshot resolves silently when bucket is null', async () => {
+    jest.resetModules();
+    jest.mock('../src/services/firebase', () => ({
+      initFirebase: jest.fn(), getDB: jest.fn(), saveSession: jest.fn(),
+      recordQuizResult: jest.fn(), saveChecklistProgress: jest.fn(),
+      getChecklistProgress: jest.fn(), trackEvent: jest.fn(), getTimeline: jest.fn(),
+    }));
+    const s = require('../src/services/storage');
+    await expect(s.uploadAnalyticsSnapshot()).resolves.toBeUndefined();
+  });
+
+  it('initStorage and uploadAnalyticsSnapshot are exported functions', () => {
+    const s = require('../src/services/storage');
+    expect(typeof s.initStorage).toBe('function');
+    expect(typeof s.uploadAnalyticsSnapshot).toBe('function');
+  });
+});
+
+/* ================================================================== */
+/*  requestLogger — finish handler coverage (lines 33-36)             */
+/* ================================================================== */
+
+describe('requestLogger — finish event handler', () => {
+  const { requestLogger } = require('../src/middleware/requestLogger');
+
+  it('logs coloured status and elapsed time on res finish', () => {
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    const req = { method: 'GET', path: '/api/test' };
+    let finishHandler;
+    const res = {
+      send: jest.fn(),
+      on: jest.fn((event, handler) => { if (event === 'finish') { finishHandler = handler; } }),
+      setHeader: jest.fn(),
+      headersSent: false,
+      statusCode: 200,
+    };
+    requestLogger(req, res, jest.fn());
+
+    // Trigger the finish handler
+    expect(finishHandler).toBeDefined();
+    finishHandler();
+
+    // Should have logged with a colour code
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('GET'));
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('/api/test'));
+    logSpy.mockRestore();
+  });
+
+  it('uses red colour for error status codes', () => {
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    const req = { method: 'POST', path: '/api/fail' };
+    let finishHandler;
+    const res = {
+      send: jest.fn(),
+      on: jest.fn((event, handler) => { if (event === 'finish') { finishHandler = handler; } }),
+      setHeader: jest.fn(),
+      headersSent: false,
+      statusCode: 500,
+    };
+    requestLogger(req, res, jest.fn());
+    finishHandler();
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('[500]'));
+    logSpy.mockRestore();
+  });
+});
+
+/* ================================================================== */
+/*  Storage — bucket init success + full upload path (lines 28,44-66) */
+/* ================================================================== */
+
+describe('Storage — successful bucket init and upload path', () => {
+  it('initStorage succeeds and uploads snapshot when bucket is configured', async () => {
+    jest.resetModules();
+
+    const mockFile = { save: jest.fn().mockResolvedValue(undefined) };
+    const mockBucket = { file: jest.fn().mockReturnValue(mockFile) };
+
+    // Mock firebase-admin/storage
+    jest.mock('firebase-admin/storage', () => ({
+      getStorage: jest.fn().mockReturnValue({
+        bucket: jest.fn().mockReturnValue(mockBucket),
+      }),
+    }));
+
+    const mockOnce = jest.fn().mockResolvedValue({ val: () => ({ test: 'data' }) });
+    jest.mock('../src/services/firebase', () => ({
+      initFirebase: jest.fn(),
+      getDB: jest.fn().mockReturnValue({
+        ref: jest.fn().mockReturnValue({ once: mockOnce }),
+      }),
+      saveSession: jest.fn(),
+      recordQuizResult: jest.fn(),
+      saveChecklistProgress: jest.fn(),
+      getChecklistProgress: jest.fn(),
+      trackEvent: jest.fn(),
+      getTimeline: jest.fn(),
+    }));
+
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    process.env.GCLOUD_STORAGE_BUCKET = 'test-bucket';
+
+    const storage = require('../src/services/storage');
+
+    // Init should connect to bucket (line 28)
+    storage.initStorage();
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Connected to bucket'), expect.anything());
+
+    // Upload should read from Firebase and save to bucket (lines 44-66)
+    await storage.uploadAnalyticsSnapshot();
+    expect(mockOnce).toHaveBeenCalledWith('value');
+    expect(mockBucket.file).toHaveBeenCalledWith(expect.stringContaining('snapshots/analytics-'));
+    expect(mockFile.save).toHaveBeenCalled();
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Uploaded snapshot'));
+
+    delete process.env.GCLOUD_STORAGE_BUCKET;
+    logSpy.mockRestore();
+  });
+
+  it('uploadAnalyticsSnapshot catches errors and logs them', async () => {
+    jest.resetModules();
+
+    const mockBucket = { file: jest.fn().mockImplementation(() => { throw new Error('file error'); }) };
+
+    jest.mock('firebase-admin/storage', () => ({
+      getStorage: jest.fn().mockReturnValue({
+        bucket: jest.fn().mockReturnValue(mockBucket),
+      }),
+    }));
+
+    jest.mock('../src/services/firebase', () => ({
+      initFirebase: jest.fn(),
+      getDB: jest.fn().mockReturnValue({
+        ref: jest.fn().mockReturnValue({ once: jest.fn().mockResolvedValue({ val: () => ({}) }) }),
+      }),
+      saveSession: jest.fn(),
+      recordQuizResult: jest.fn(),
+      saveChecklistProgress: jest.fn(),
+      getChecklistProgress: jest.fn(),
+      trackEvent: jest.fn(),
+      getTimeline: jest.fn(),
+    }));
+
+    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    process.env.GCLOUD_STORAGE_BUCKET = 'test-bucket';
+
+    const storage = require('../src/services/storage');
+    storage.initStorage();
+    await storage.uploadAnalyticsSnapshot();
+
+    expect(errSpy).toHaveBeenCalledWith(expect.stringContaining('Snapshot upload failed'), expect.any(String));
+
+    delete process.env.GCLOUD_STORAGE_BUCKET;
+    errSpy.mockRestore();
+    logSpy.mockRestore();
+  });
+});

@@ -31,6 +31,21 @@
     "testEnvironment": "node",
     "testMatch": [
       "**/tests/**/*.test.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "statements": 80,
+        "branches": 70,
+        "functions": 80,
+        "lines": 80
+      }
+    },
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/server.js",
+      "!src/services/firebase.js",
+      "!src/services/gemini.js",
+      "!src/**/*.test.js"
     ]
   },
   "engines": {
