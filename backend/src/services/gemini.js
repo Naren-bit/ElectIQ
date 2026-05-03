@@ -27,17 +27,39 @@ let client = null;
  * @constant {Object<string, string>}
  */
 const STATE_LANGUAGES = {
-  'Andhra Pradesh': 'Telugu', 'Arunachal Pradesh': 'English', 'Assam': 'Assamese',
-  'Bihar': 'Hindi', 'Chhattisgarh': 'Hindi', 'Goa': 'Konkani', 'Gujarat': 'Gujarati',
-  'Haryana': 'Hindi', 'Himachal Pradesh': 'Hindi', 'Jharkhand': 'Hindi',
-  'Karnataka': 'Kannada', 'Kerala': 'Malayalam', 'Madhya Pradesh': 'Hindi',
-  'Maharashtra': 'Marathi', 'Manipur': 'Manipuri', 'Meghalaya': 'English',
-  'Mizoram': 'Mizo', 'Nagaland': 'English', 'Odisha': 'Odia', 'Punjab': 'Punjabi',
-  'Rajasthan': 'Hindi', 'Sikkim': 'Nepali', 'Tamil Nadu': 'Tamil',
-  'Telangana': 'Telugu', 'Tripura': 'Bengali', 'Uttar Pradesh': 'Hindi',
-  'Uttarakhand': 'Hindi', 'West Bengal': 'Bengali', 'Delhi': 'Hindi',
-  'Jammu & Kashmir': 'Urdu', 'Ladakh': 'Hindi', 'Puducherry': 'Tamil',
-  'Chandigarh': 'Hindi',
+  'Andhra Pradesh': 'Telugu',
+  'Arunachal Pradesh': 'English',
+  Assam: 'Assamese',
+  Bihar: 'Hindi',
+  Chhattisgarh: 'Hindi',
+  Goa: 'Konkani',
+  Gujarat: 'Gujarati',
+  Haryana: 'Hindi',
+  'Himachal Pradesh': 'Hindi',
+  Jharkhand: 'Hindi',
+  Karnataka: 'Kannada',
+  Kerala: 'Malayalam',
+  'Madhya Pradesh': 'Hindi',
+  Maharashtra: 'Marathi',
+  Manipur: 'Manipuri',
+  Meghalaya: 'English',
+  Mizoram: 'Mizo',
+  Nagaland: 'English',
+  Odisha: 'Odia',
+  Punjab: 'Punjabi',
+  Rajasthan: 'Hindi',
+  Sikkim: 'Nepali',
+  'Tamil Nadu': 'Tamil',
+  Telangana: 'Telugu',
+  Tripura: 'Bengali',
+  'Uttar Pradesh': 'Hindi',
+  Uttarakhand: 'Hindi',
+  'West Bengal': 'Bengali',
+  Delhi: 'Hindi',
+  'Jammu & Kashmir': 'Urdu',
+  Ladakh: 'Hindi',
+  Puducherry: 'Tamil',
+  Chandigarh: 'Hindi',
 };
 
 function getClient() {
@@ -63,13 +85,17 @@ function getClient() {
  */
 function buildSystemPrompt(language = 'English') {
   const today = new Date().toLocaleDateString('en-IN', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
     timeZone: 'Asia/Kolkata',
   });
 
-  const langInstruction = language === 'English'
-    ? 'LANGUAGE: You MUST respond ONLY in English. Do NOT use any regional language.'
-    : `LANGUAGE: You MUST respond in ${language} script/language. Use ${language} for all text. Only use English for proper nouns like "Election Commission of India", URLs, and form names like "Form 6".`;
+  const langInstruction =
+    language === 'English'
+      ? 'LANGUAGE: You MUST respond ONLY in English. Do NOT use any regional language.'
+      : `LANGUAGE: You MUST respond in ${language} script/language. Use ${language} for all text. Only use English for proper nouns like "Election Commission of India", URLs, and form names like "Form 6".`;
 
   return `You are ElectIQ, an expert AI election companion for Indian citizens.
 You help voters understand the election process, their rights, required documents, polling procedures, and civic responsibilities.
@@ -118,7 +144,13 @@ Response rules:
  * @param {string|null} [imageBase64=null] - Base64-encoded image data for multimodal vision queries
  * @returns {Promise<string>} Gemini's response text
  */
-async function chat(message, profile = {}, history = [], language = 'English', imageBase64 = null) {
+async function chat(
+  message,
+  profile = {},
+  history = [],
+  language = 'English',
+  imageBase64 = null,
+) {
   const profileContext = profile.state
     ? `\n\nUser profile: State: ${profile.state} | Election type: ${profile.electionType || 'General'} | First-time voter: ${profile.isFirstTime ? 'Yes' : 'No'} | Age: ${profile.age || 'Unknown'}`
     : '\n\nUser profile: Not yet set — ask a clarifying question about their state if location-specific.';
@@ -126,11 +158,13 @@ async function chat(message, profile = {}, history = [], language = 'English', i
   const model = getClient().getGenerativeModel({
     model: 'gemini-2.5-flash',
     generationConfig: { maxOutputTokens: 500, temperature: 0.6 },
-    systemInstruction: { parts: [{ text: buildSystemPrompt(language) + profileContext }] },
+    systemInstruction: {
+      parts: [{ text: buildSystemPrompt(language) + profileContext }],
+    },
   });
 
   const chatSession = model.startChat({
-    history: history.slice(-12).map(h => ({
+    history: history.slice(-12).map((h) => ({
       role: h.role,
       parts: [{ text: h.text }],
     })),
@@ -141,7 +175,7 @@ async function chat(message, profile = {}, history = [], language = 'English', i
     // Attempt to parse mime type from base64 if needed, default to jpeg
     payload = [
       { text: message },
-      { inlineData: { data: imageBase64, mimeType: 'image/jpeg' } }
+      { inlineData: { data: imageBase64, mimeType: 'image/jpeg' } },
     ];
   }
 
@@ -164,20 +198,27 @@ async function chat(message, profile = {}, history = [], language = 'English', i
  * @param {string}   [language='English']      - Response language
  * @returns {Promise<{question:string,options:string[],correctIndex:number,explanation:string,topic:string}>}
  */
-async function generateQuizQuestion(profile, difficulty = 1, previousTopics = [], language = 'English') {
+async function generateQuizQuestion(
+  profile,
+  difficulty = 1,
+  previousTopics = [],
+  language = 'English',
+) {
   const model = getClient().getGenerativeModel({
     model: 'gemini-2.5-flash',
     generationConfig: { maxOutputTokens: 400, temperature: 0.8 },
   });
 
-  const difficultyLabel = ['', 'basic', 'intermediate', 'advanced'][difficulty] || 'basic';
+  const difficultyLabel =
+    ['', 'basic', 'intermediate', 'advanced'][difficulty] || 'basic';
   const stateContext = profile.state ? `for someone in ${profile.state}` : '';
   const avoidTopics = previousTopics.length
     ? `Avoid these topics already covered: ${previousTopics.join(', ')}.`
     : '';
-  const langNote = language === 'English'
-    ? 'Write everything in English.'
-    : `Write the question, options, and explanation in ${language} language/script. Keep JSON keys in English.`;
+  const langNote =
+    language === 'English'
+      ? 'Write everything in English.'
+      : `Write the question, options, and explanation in ${language} language/script. Keep JSON keys in English.`;
 
   const prompt = `Generate one ${difficultyLabel} multiple-choice quiz question about the Indian election process ${stateContext}.
 ${avoidTopics}
@@ -219,9 +260,10 @@ async function generateChecklist(profile, language = 'English') {
     generationConfig: { maxOutputTokens: 600, temperature: 0.3 },
   });
 
-  const langNote = language === 'English'
-    ? 'Write all task and detail text in English.'
-    : `Write task and detail text in ${language} language/script. Keep JSON keys, category values, and URLs in English.`;
+  const langNote =
+    language === 'English'
+      ? 'Write all task and detail text in English.'
+      : `Write task and detail text in ${language} language/script. Keep JSON keys, category values, and URLs in English.`;
 
   const prompt = `Generate a personalised election preparation checklist for:
 State: ${profile.state || 'India (general)'}
@@ -276,7 +318,7 @@ function localFallback(message, profile = {}) {
   }
 
   if (m.match(/evm|machine|voting\s*machine|press\s*button|electronic/)) {
-    return 'EVMs (Electronic Voting Machines) are used in all Indian elections. At the booth: **Step 1** — your name is verified on the electoral roll. **Step 2** — you receive a slip. **Step 3** — press the button next to your chosen candidate\'s symbol on the Balloting Unit. **Step 4** — a VVPAT slip will appear briefly confirming your vote. The process takes under 2 minutes.';
+    return "EVMs (Electronic Voting Machines) are used in all Indian elections. At the booth: **Step 1** — your name is verified on the electoral roll. **Step 2** — you receive a slip. **Step 3** — press the button next to your chosen candidate's symbol on the Balloting Unit. **Step 4** — a VVPAT slip will appear briefly confirming your vote. The process takes under 2 minutes.";
   }
 
   if (m.match(/model\s*code|mcc|conduct/)) {
@@ -288,7 +330,7 @@ function localFallback(message, profile = {}) {
   }
 
   if (m.match(/right|constitutional|fundamental|article/)) {
-    return 'Voting is a **constitutional right** under **Article 326** of the Indian Constitution. Every citizen aged 18 and above can vote regardless of caste, religion, gender, or economic status. The right to vote is also protected under the **Representation of the People Act, 1951**. Exercise your right — every vote shapes the nation\'s future!';
+    return "Voting is a **constitutional right** under **Article 326** of the Indian Constitution. Every citizen aged 18 and above can vote regardless of caste, religion, gender, or economic status. The right to vote is also protected under the **Representation of the People Act, 1951**. Exercise your right — every vote shapes the nation's future!";
   }
 
   if (m.match(/deadline|last\s*date|when.*register|time/)) {

@@ -20,12 +20,17 @@ let bucket = null;
  */
 function initStorage() {
   if (!process.env.GCLOUD_STORAGE_BUCKET) {
-    console.warn('[Storage] GCLOUD_STORAGE_BUCKET not set. Snapshot archiving disabled.');
+    console.warn(
+      '[Storage] GCLOUD_STORAGE_BUCKET not set. Snapshot archiving disabled.',
+    );
     return;
   }
   try {
     bucket = getStorage().bucket(process.env.GCLOUD_STORAGE_BUCKET);
-    console.log('[Storage] Connected to bucket:', process.env.GCLOUD_STORAGE_BUCKET);
+    console.log(
+      '[Storage] Connected to bucket:',
+      process.env.GCLOUD_STORAGE_BUCKET,
+    );
   } catch (err) {
     console.error('[Storage] Init failed:', err.message);
   }
@@ -39,26 +44,28 @@ function initStorage() {
  * @returns {Promise<void>} Resolves when upload completes or bucket is unavailable
  */
 async function uploadAnalyticsSnapshot() {
-  if (!bucket) {return;}
+  if (!bucket) {
+    return;
+  }
 
   try {
     const db = getDB();
     const [quizSnap, sessionsSnap] = await Promise.all([
       db.ref('quiz_results').once('value'),
-      db.ref('sessions').once('value')
+      db.ref('sessions').once('value'),
     ]);
 
     const snapshotData = {
       timestamp: Date.now(),
       quiz_results: quizSnap.val() || {},
-      sessions: sessionsSnap.val() || {}
+      sessions: sessionsSnap.val() || {},
     };
 
     const fileName = `snapshots/analytics-${Date.now()}.json`;
     const file = bucket.file(fileName);
 
     await file.save(JSON.stringify(snapshotData, null, 2), {
-      metadata: { contentType: 'application/json' }
+      metadata: { contentType: 'application/json' },
     });
 
     console.log(`[Storage] Uploaded snapshot: ${fileName}`);

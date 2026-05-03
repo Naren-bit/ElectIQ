@@ -9,7 +9,7 @@
 'use strict';
 
 const express = require('express');
-const router  = express.Router();
+const router = express.Router();
 
 const { generateChecklist } = require('../services/gemini');
 const {

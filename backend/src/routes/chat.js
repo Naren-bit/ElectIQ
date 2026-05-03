@@ -9,7 +9,7 @@
 'use strict';
 
 const express = require('express');
-const router  = express.Router();
+const router = express.Router();
 
 const { chat, localFallback } = require('../services/gemini');
 const { saveSession, trackEvent } = require('../services/firebase');
@@ -31,14 +31,23 @@ const { saveSession, trackEvent } = require('../services/firebase');
  */
 router.post('/', async(req, res, next) => {
   try {
-    const { message, profile = {}, history = [], sessionId, language = 'English', image } = req.body;
+    const {
+      message,
+      profile = {},
+      history = [],
+      sessionId,
+      language = 'English',
+      image,
+    } = req.body;
 
     /* ---------- validation ---------- */
     if (!message || typeof message !== 'string') {
       return res.status(400).json({ error: '`message` (string) is required' });
     }
     if (message.length > 1000) {
-      return res.status(400).json({ error: 'Message too long (max 1000 chars)' });
+      return res
+        .status(400)
+        .json({ error: 'Message too long (max 1000 chars)' });
     }
 
     /* ---------- persist session ---------- */
@@ -51,7 +60,10 @@ router.post('/', async(req, res, next) => {
     try {
       reply = await chat(message, profile, history, language, image);
     } catch (err) {
-      console.warn('[Chat] Gemini unavailable, using local fallback:', err.message);
+      console.warn(
+        '[Chat] Gemini unavailable, using local fallback:',
+        err.message,
+      );
       reply = localFallback(message, profile);
     }
 

@@ -16,24 +16,26 @@
 
 require('dotenv').config();
 
-const express        = require('express');
-const cors           = require('cors');
-const helmet         = require('helmet');
-const rateLimit      = require('express-rate-limit');
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const { createServer } = require('http');
-const { Server }     = require('socket.io');
+const { Server } = require('socket.io');
 const { randomUUID } = require('crypto');
 
-const path           = require('path');
+const path = require('path');
 
 /* ------------------------------------------------------------------ */
 /*  Environment validation                                             */
 /* ------------------------------------------------------------------ */
 
 const REQUIRED_ENV = ['GEMINI_API_KEY', 'FIREBASE_DATABASE_URL'];
-const missing = REQUIRED_ENV.filter(k => !process.env[k]);
+const missing = REQUIRED_ENV.filter((k) => !process.env[k]);
 if (missing.length) {
-  console.error(`[Boot] Missing required environment variables: ${missing.join(', ')}`);
+  console.error(
+    `[Boot] Missing required environment variables: ${missing.join(', ')}`,
+  );
   process.exit(1);
 }
 
@@ -41,22 +43,22 @@ if (missing.length) {
 /*  Route & service imports                                            */
 /* ------------------------------------------------------------------ */
 
-const chatRouter      = require('./routes/chat');
-const quizRouter      = require('./routes/quiz');
-const timelineRouter  = require('./routes/timeline');
+const chatRouter = require('./routes/chat');
+const quizRouter = require('./routes/quiz');
+const timelineRouter = require('./routes/timeline');
 const checklistRouter = require('./routes/checklist');
-const { initFirebase }  = require('./services/firebase');
+const { initFirebase } = require('./services/firebase');
 const { initStorage, uploadAnalyticsSnapshot } = require('./services/storage');
-const { errorHandler }  = require('./middleware/errorHandler');
+const { errorHandler } = require('./middleware/errorHandler');
 const { requestLogger } = require('./middleware/requestLogger');
 
 /* ------------------------------------------------------------------ */
 /*  App & HTTP server                                                  */
 /* ------------------------------------------------------------------ */
 
-const app        = express();
+const app = express();
 const httpServer = createServer(app);
-const io         = new Server(httpServer, {
+const io = new Server(httpServer, {
   cors: {
     origin: process.env.FRONTEND_URL || '*',
     methods: ['GET', 'POST'],
@@ -71,12 +73,14 @@ app.set('io', io);
 /* ------------------------------------------------------------------ */
 
 // Request ID — accept trusted header or generate a fresh UUIDv4
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 app.use((req, _res, next) => {
-  const id = (req.headers['x-request-id'] && UUID_RE.test(req.headers['x-request-id']))
-    ? req.headers['x-request-id']
-    : randomUUID();
+  const id =
+    req.headers['x-request-id'] && UUID_RE.test(req.headers['x-request-id'])
+      ? req.headers['x-request-id']
+      : randomUUID();
   req.id = id;
   _res.setHeader('X-Request-ID', id);
   next();
@@ -98,10 +102,12 @@ app.use((req, _res, next) => {
           .trim()
           .slice(0, 2000);
       }
-      if (Array.isArray(value)) {return value.map(sanitize);}
+      if (Array.isArray(value)) {
+        return value.map(sanitize);
+      }
       if (value && typeof value === 'object') {
         return Object.fromEntries(
-          Object.entries(value).map(([k, v]) => [k, sanitize(v)])
+          Object.entries(value).map(([k, v]) => [k, sanitize(v)]),
         );
       }
       return value;
@@ -112,35 +118,48 @@ app.use((req, _res, next) => {
 });
 
 // Helmet — strict Content Security Policy
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: [
-        "'self'",
-        'https://www.gstatic.com',
-        'https://maps.googleapis.com',
-        'https://unpkg.com',
-        "'unsafe-inline'",
-      ],
-      scriptSrcAttr: ["'unsafe-inline'"],
-      connectSrc: [
-        "'self'",
-        'https://*.firebaseio.com',
-        'wss://*.firebaseio.com',
-        'https://generativelanguage.googleapis.com',
-        'https://maps.googleapis.com',
-      ],
-      imgSrc: ["'self'", 'data:', 'https://maps.gstatic.com', 'https://*.googleapis.com', 'https://*.openstreetmap.org'],
-      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-      styleSrc: ["'self'", 'https://fonts.googleapis.com', 'https://unpkg.com', "'unsafe-inline'"],
-      frameSrc: ["'none'"],
-      objectSrc: ["'none'"],
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: [
+          "'self'",
+          'https://www.gstatic.com',
+          'https://maps.googleapis.com',
+          'https://unpkg.com',
+          "'unsafe-inline'",
+        ],
+        scriptSrcAttr: ["'unsafe-inline'"],
+        connectSrc: [
+          "'self'",
+          'https://*.firebaseio.com',
+          'wss://*.firebaseio.com',
+          'https://generativelanguage.googleapis.com',
+          'https://maps.googleapis.com',
+        ],
+        imgSrc: [
+          "'self'",
+          'data:',
+          'https://maps.gstatic.com',
+          'https://*.googleapis.com',
+          'https://*.openstreetmap.org',
+        ],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+        styleSrc: [
+          "'self'",
+          'https://fonts.googleapis.com',
+          'https://unpkg.com',
+          "'unsafe-inline'",
+        ],
+        frameSrc: ["'none'"],
+        objectSrc: ["'none'"],
+      },
     },
-  },
-  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
-  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
-}));
+    hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  }),
+);
 
 // CORS
 app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
@@ -149,7 +168,7 @@ app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
 app.use((_req, res, next) => {
   res.setHeader(
     'Permissions-Policy',
-    'camera=(), microphone=(), geolocation=(), payment=(), usb=()'
+    'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
   );
   next();
 });
@@ -161,21 +180,29 @@ app.use(requestLogger);
 /*  Rate limiting                                                      */
 /* ------------------------------------------------------------------ */
 
-app.use('/api/', rateLimit({
-  windowMs: 60_000,
-  max: 60,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many requests. Please try again in a minute.' },
-}));
+app.use(
+  '/api/',
+  rateLimit({
+    windowMs: 60_000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests. Please try again in a minute.' },
+  }),
+);
 
-app.use('/api/chat', rateLimit({
-  windowMs: 60_000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Chat rate limit reached. Please wait before sending again.' },
-}));
+app.use(
+  '/api/chat',
+  rateLimit({
+    windowMs: 60_000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+      error: 'Chat rate limit reached. Please wait before sending again.',
+    },
+  }),
+);
 
 /* ------------------------------------------------------------------ */
 /*  Static files                                                       */
@@ -187,9 +214,9 @@ app.use(express.static(path.join(__dirname, '../../public')));
 /*  API routes                                                         */
 /* ------------------------------------------------------------------ */
 
-app.use('/api/chat',      chatRouter);
-app.use('/api/quiz',      quizRouter);
-app.use('/api/timeline',  timelineRouter);
+app.use('/api/chat', chatRouter);
+app.use('/api/quiz', quizRouter);
+app.use('/api/timeline', timelineRouter);
 app.use('/api/checklist', checklistRouter);
 
 // Language map endpoint
@@ -248,9 +275,14 @@ async function boot() {
     initStorage();
 
     // Schedule periodic analytics snapshot (every 20 minutes)
-    setInterval(() => {
-      uploadAnalyticsSnapshot().catch(err => console.error('[Storage Task Error]', err));
-    }, 20 * 60 * 1000);
+    setInterval(
+      () => {
+        uploadAnalyticsSnapshot().catch((err) =>
+          console.error('[Storage Task Error]', err),
+        );
+      },
+      20 * 60 * 1000,
+    );
 
     httpServer.listen(PORT, () => {
       console.log(`[ElectIQ] Running on http://localhost:${PORT}`);

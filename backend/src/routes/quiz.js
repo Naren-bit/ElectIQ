@@ -8,7 +8,7 @@
 'use strict';
 
 const express = require('express');
-const router  = express.Router();
+const router = express.Router();
 
 const { generateQuizQuestion } = require('../services/gemini');
 const { recordQuizResult, trackEvent } = require('../services/firebase');
@@ -28,14 +28,22 @@ const { recordQuizResult, trackEvent } = require('../services/firebase');
  */
 router.get('/question', async(req, res, next) => {
   try {
-    const difficulty = Math.min(3, Math.max(1, parseInt(req.query.difficulty, 10) || 1));
-    const profile    = { state: req.query.state || null };
-    const language   = req.query.language || 'English';
+    const difficulty = Math.min(
+      3,
+      Math.max(1, parseInt(req.query.difficulty, 10) || 1),
+    );
+    const profile = { state: req.query.state || null };
+    const language = req.query.language || 'English';
     const prevTopics = req.query.previousTopics
-      ? req.query.previousTopics.split(',').map(t => t.trim())
+      ? req.query.previousTopics.split(',').map((t) => t.trim())
       : [];
 
-    const question = await generateQuizQuestion(profile, difficulty, prevTopics, language);
+    const question = await generateQuizQuestion(
+      profile,
+      difficulty,
+      prevTopics,
+      language,
+    );
     return res.json({ question, timestamp: Date.now() });
   } catch (err) {
     next(err);
@@ -62,7 +70,9 @@ router.post('/answer', async(req, res, next) => {
     const { sessionId, topic, correct, difficulty } = req.body;
 
     if (!sessionId || typeof correct !== 'boolean') {
-      return res.status(400).json({ error: '`sessionId` and `correct` (boolean) are required' });
+      return res
+        .status(400)
+        .json({ error: '`sessionId` and `correct` (boolean) are required' });
     }
 
     await recordQuizResult(sessionId, { topic, correct, difficulty });

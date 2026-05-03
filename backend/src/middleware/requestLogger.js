@@ -32,8 +32,10 @@ function requestLogger(req, res, next) {
   res.on('finish', () => {
     const ms = Date.now() - start;
     const colour = res.statusCode < 400 ? '\x1b[32m' : '\x1b[31m';
-    const reset  = '\x1b[0m';
-    console.log(`${colour}[${res.statusCode}]${reset} ${req.method} ${req.path} — ${ms}ms`);
+    const reset = '\x1b[0m';
+    console.log(
+      `${colour}[${res.statusCode}]${reset} ${req.method} ${req.path} — ${ms}ms`,
+    );
   });
 
   next();

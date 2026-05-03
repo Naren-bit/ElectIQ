@@ -33,7 +33,8 @@ const ELECTION_TIMELINES = {
     step1: {
       id: 1,
       title: 'Check voter registration',
-      description: 'Verify your name on the electoral roll at voters.eci.gov.in',
+      description:
+        'Verify your name on the electoral roll at voters.eci.gov.in',
       deadline: 'Before nomination period',
       status: 'pending',
       icon: '📋',
@@ -63,7 +64,8 @@ const ELECTION_TIMELINES = {
     step4: {
       id: 4,
       title: 'Find your polling booth',
-      description: 'Search your booth address and serial number on electoral roll',
+      description:
+        'Search your booth address and serial number on electoral roll',
       deadline: '1 week before polling',
       status: 'pending',
       icon: '📍',
@@ -73,7 +75,8 @@ const ELECTION_TIMELINES = {
     step5: {
       id: 5,
       title: 'Polling day — cast your vote',
-      description: 'Carry approved photo ID. Press button next to your chosen symbol on EVM. VVPAT confirms your vote.',
+      description:
+        'Carry approved photo ID. Press button next to your chosen symbol on EVM. VVPAT confirms your vote.',
       deadline: 'Election day',
       status: 'pending',
       icon: '🗳️',
@@ -95,7 +98,8 @@ const ELECTION_TIMELINES = {
     step1: {
       id: 1,
       title: 'Check Maharashtra electoral roll',
-      description: 'Verify your name at ceo.maharashtra.gov.in or voters.eci.gov.in',
+      description:
+        'Verify your name at ceo.maharashtra.gov.in or voters.eci.gov.in',
       deadline: 'Before nomination period',
       status: 'pending',
       icon: '📋',
@@ -105,7 +109,8 @@ const ELECTION_TIMELINES = {
     step2: {
       id: 2,
       title: 'Register via Form 6',
-      description: 'Submit online at NVSP portal or offline at your Taluka office',
+      description:
+        'Submit online at NVSP portal or offline at your Taluka office',
       deadline: '30 days before polls',
       status: 'pending',
       icon: '✍️',
@@ -115,7 +120,8 @@ const ELECTION_TIMELINES = {
     step3: {
       id: 3,
       title: 'Download e-EPIC card',
-      description: 'Maharashtra voters can download digital EPIC from voterportal.eci.gov.in',
+      description:
+        'Maharashtra voters can download digital EPIC from voterportal.eci.gov.in',
       deadline: 'Anytime',
       status: 'pending',
       icon: '🪪',
@@ -145,7 +151,8 @@ const ELECTION_TIMELINES = {
     step6: {
       id: 6,
       title: 'Track Maharashtra results',
-      description: 'Live results on results.eci.gov.in and CEO Maharashtra portal',
+      description:
+        'Live results on results.eci.gov.in and CEO Maharashtra portal',
       deadline: 'Results day',
       status: 'pending',
       icon: '📊',
@@ -167,18 +174,25 @@ const ELECTION_TIMELINES = {
  * @throws {Error} If FIREBASE_DATABASE_URL is missing or connection fails
  */
 async function initFirebase() {
-  if (admin.apps.length) {return;}
+  if (admin.apps.length) {
+    return;
+  }
 
   let serviceAccount;
   try {
     const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON || '{}';
-    const clean = (raw.startsWith("'") && raw.endsWith("'")) || (raw.startsWith('"') && raw.endsWith('"'))
-      ? raw.slice(1, -1)
-      : raw;
+    const clean =
+      (raw.startsWith("'") && raw.endsWith("'")) ||
+      (raw.startsWith('"') && raw.endsWith('"'))
+        ? raw.slice(1, -1)
+        : raw;
     serviceAccount = JSON.parse(clean);
   } catch (err) {
     console.error('[Firebase] JSON Parse Error:', err.message);
-    console.error('[Firebase] Raw value starts with:', (process.env.FIREBASE_SERVICE_ACCOUNT_JSON || '').substring(0, 20));
+    console.error(
+      '[Firebase] Raw value starts with:',
+      (process.env.FIREBASE_SERVICE_ACCOUNT_JSON || '').substring(0, 20),
+    );
     throw err;
   }
 
@@ -214,7 +228,9 @@ async function initFirebase() {
  * @throws {Error} If Firebase has not been initialised yet
  */
 function getDB() {
-  if (!db) {throw new Error('Firebase not initialised — call initFirebase() first');}
+  if (!db) {
+    throw new Error('Firebase not initialised — call initFirebase() first');
+  }
   return db;
 }
 
@@ -230,10 +246,12 @@ function getDB() {
  * @returns {Promise<void>}
  */
 async function saveSession(sessionId, profile) {
-  await getDB().ref(`sessions/${sessionId}`).update({
-    ...profile,
-    updatedAt: Date.now(),
-  });
+  await getDB()
+    .ref(`sessions/${sessionId}`)
+    .update({
+      ...profile,
+      updatedAt: Date.now(),
+    });
 }
 
 /* ------------------------------------------------------------------ */
@@ -248,10 +266,12 @@ async function saveSession(sessionId, profile) {
  * @returns {Promise<void>}
  */
 async function recordQuizResult(sessionId, result) {
-  await getDB().ref(`quiz_results/${sessionId}`).push({
-    ...result,
-    timestamp: Date.now(),
-  });
+  await getDB()
+    .ref(`quiz_results/${sessionId}`)
+    .push({
+      ...result,
+      timestamp: Date.now(),
+    });
 }
 
 /* ------------------------------------------------------------------ */
@@ -266,10 +286,12 @@ async function recordQuizResult(sessionId, result) {
  * @returns {Promise<void>}
  */
 async function saveChecklistProgress(sessionId, progress) {
-  await getDB().ref(`checklists/${sessionId}`).update({
-    ...progress,
-    updatedAt: Date.now(),
-  });
+  await getDB()
+    .ref(`checklists/${sessionId}`)
+    .update({
+      ...progress,
+      updatedAt: Date.now(),
+    });
 }
 
 /**
@@ -322,16 +344,34 @@ async function getTimeline(state) {
   const key = state?.toLowerCase().replace(/\s+/g, '_') || 'general';
   const snap = await getDB().ref(`timelines/${key}`).once('value');
 
-  if (snap.exists()) {return Object.values(snap.val());}
+  if (snap.exists()) {
+    return Object.values(snap.val());
+  }
 
   // Fall back to general timeline
   const generalSnap = await getDB().ref('timelines/general').once('value');
-  if (generalSnap.exists()) {return Object.values(generalSnap.val());}
+  if (generalSnap.exists()) {
+    return Object.values(generalSnap.val());
+  }
 
   // Final hardcoded safety fallback if database is empty
   return [
-    { id: 1, title: 'Check voter registration', description: 'Verify your name on the electoral roll', deadline: 'Before polls', icon: '📋', category: 'Registration' },
-    { id: 2, title: 'Cast your vote', description: 'Carry approved ID to your polling booth', deadline: 'Election day', icon: '🗳️', category: 'Voting' }
+    {
+      id: 1,
+      title: 'Check voter registration',
+      description: 'Verify your name on the electoral roll',
+      deadline: 'Before polls',
+      icon: '📋',
+      category: 'Registration',
+    },
+    {
+      id: 2,
+      title: 'Cast your vote',
+      description: 'Carry approved ID to your polling booth',
+      deadline: 'Election day',
+      icon: '🗳️',
+      category: 'Voting',
+    },
   ];
 }
 
