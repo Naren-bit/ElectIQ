@@ -39,7 +39,7 @@ function initStorage() {
  * @returns {Promise<void>} Resolves when upload completes or bucket is unavailable
  */
 async function uploadAnalyticsSnapshot() {
-  if (!bucket) return;
+  if (!bucket) {return;}
 
   try {
     const db = getDB();

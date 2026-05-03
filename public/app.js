@@ -750,31 +750,50 @@ function speakResponse(text){if(!synthesis)return;synthesis.cancel();var c=text.
 /* ------------------------------------------------------------------ */
 /*  Language selection                                                 */
 /* ------------------------------------------------------------------ */
+/**
+ * Get the regional language for the current voter's state.
+ * Returns null if the state language is English (no toggle needed).
+ *
+ * @returns {string|null} Regional language name or null
+ */
 function getRegionalLang(){
   if(!profile||!profile.state)return null;
   var lang=STATE_LANGUAGES[profile.state];
   return (lang&&lang!=='English')?lang:null;
 }
 
+/**
+ * Render the English/Regional language toggle buttons into a container.
+ * Includes proper ARIA attributes for screen reader accessibility.
+ *
+ * @param {string} containerId - DOM element ID to render into
+ */
 function renderLangToggle(containerId){
   var container=document.getElementById(containerId);if(!container)return;
   var regional=getRegionalLang();
   if(!regional){container.innerHTML='';return;}
   var isRegional=currentLang!=='English';
   container.innerHTML='<div class="lang-toggle" role="group" aria-label="Language selection">'+
-    '<button class="lang-btn'+(isRegional?'':' active')+'" onclick="setLang(\'English\')" aria-label="English" aria-pressed="'+(isRegional?'false':'true')+'" lang="en">EN</button>'+
-    '<button class="lang-btn'+(isRegional?' active':'')+'" onclick="setLang(\''+regional+'\')" aria-label="'+regional+'" aria-pressed="'+(isRegional?'true':'false')+'">'+regional.substring(0,3).toUpperCase()+'</button>'+
+    '<button class="lang-btn'+(isRegional?'':' active')+'" data-lang="English" onclick="setLang(\'English\')" aria-label="Switch to English" aria-pressed="'+(isRegional?'false':'true')+'" lang="en">EN</button>'+
+    '<button class="lang-btn'+(isRegional?' active':'')+'" data-lang="'+regional+'" onclick="setLang(\''+regional+'\')" aria-label="Switch to '+regional+'" aria-pressed="'+(isRegional?'true':'false')+'">'+regional.substring(0,3).toUpperCase()+'</button>'+
   '</div>';
 }
 
+/**
+ * Set the active UI language and re-render affected components.
+ * Updates aria-pressed on all language toggle buttons for accessibility.
+ *
+ * @param {string} lang - Language name (e.g. 'English', 'Tamil')
+ */
 window.setLang=function(lang){
   currentLang=lang;
   sessionStorage.setItem('eq_lang',lang);
+  document.querySelectorAll('[data-lang]').forEach(function(btn) { var isActive = btn.dataset.lang === lang; btn.setAttribute('aria-pressed', isActive ? 'true' : 'false'); btn.classList.toggle('active', isActive); });
   // Re-render active tab
   if(activeTab==='home')renderHome();
   // Clear cached checklist so it reloads in new language
   checklistItems=[];checklistLoading=false;sessionStorage.removeItem('eq_cli');
-  announce('Language set to '+lang);
+  announce('Language changed to '+lang);
 };
 
 /* ------------------------------------------------------------------ */

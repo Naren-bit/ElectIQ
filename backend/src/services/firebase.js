@@ -167,7 +167,7 @@ const ELECTION_TIMELINES = {
  * @throws {Error} If FIREBASE_DATABASE_URL is missing or connection fails
  */
 async function initFirebase() {
-  if (admin.apps.length) return;
+  if (admin.apps.length) {return;}
 
   let serviceAccount;
   try {
@@ -195,7 +195,7 @@ async function initFirebase() {
   // Seed election timeline data if not present or general key missing
   const snap = await db.ref('timelines').once('value');
   const hasGeneral = snap.exists() && snap.child('general').exists();
-  
+
   if (!snap.exists() || !hasGeneral) {
     console.log('[Firebase] Seeding/Updating election timeline data...');
     // Use update to merge instead of set to overwrite everything
@@ -214,7 +214,7 @@ async function initFirebase() {
  * @throws {Error} If Firebase has not been initialised yet
  */
 function getDB() {
-  if (!db) throw new Error('Firebase not initialised — call initFirebase() first');
+  if (!db) {throw new Error('Firebase not initialised — call initFirebase() first');}
   return db;
 }
 
@@ -322,11 +322,11 @@ async function getTimeline(state) {
   const key = state?.toLowerCase().replace(/\s+/g, '_') || 'general';
   const snap = await getDB().ref(`timelines/${key}`).once('value');
 
-  if (snap.exists()) return Object.values(snap.val());
+  if (snap.exists()) {return Object.values(snap.val());}
 
   // Fall back to general timeline
   const generalSnap = await getDB().ref('timelines/general').once('value');
-  if (generalSnap.exists()) return Object.values(generalSnap.val());
+  if (generalSnap.exists()) {return Object.values(generalSnap.val());}
 
   // Final hardcoded safety fallback if database is empty
   return [

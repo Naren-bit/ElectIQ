@@ -268,27 +268,27 @@ function localFallback(message, profile = {}) {
   }
 
   if (m.match(/booth|polling|where.*vote|find.*station|location/)) {
-    return `To find your polling booth, visit **voters.eci.gov.in** and enter your details under "Know Your Polling Booth." You can also search by your Voter ID number. The booth details show address, building name, and your serial number on the electoral roll.`;
+    return 'To find your polling booth, visit **voters.eci.gov.in** and enter your details under "Know Your Polling Booth." You can also search by your Voter ID number. The booth details show address, building name, and your serial number on the electoral roll.';
   }
 
   if (m.match(/document|id\b|identity|what.*bring|carry|aadhaar/)) {
-    return `At the polling booth you must carry **one of these 12 approved photo IDs**: Aadhaar card, Voter ID (EPIC), Passport, Driving licence, PAN card, MNREGA job card, Smart card, Bank passbook with photo, Health insurance smart card, Pension document with photo, NPR smart card, or Official identity card. Your **Voter ID (EPIC) is the most reliable choice**.`;
+    return 'At the polling booth you must carry **one of these 12 approved photo IDs**: Aadhaar card, Voter ID (EPIC), Passport, Driving licence, PAN card, MNREGA job card, Smart card, Bank passbook with photo, Health insurance smart card, Pension document with photo, NPR smart card, or Official identity card. Your **Voter ID (EPIC) is the most reliable choice**.';
   }
 
   if (m.match(/evm|machine|voting\s*machine|press\s*button|electronic/)) {
-    return `EVMs (Electronic Voting Machines) are used in all Indian elections. At the booth: **Step 1** — your name is verified on the electoral roll. **Step 2** — you receive a slip. **Step 3** — press the button next to your chosen candidate's symbol on the Balloting Unit. **Step 4** — a VVPAT slip will appear briefly confirming your vote. The process takes under 2 minutes.`;
+    return 'EVMs (Electronic Voting Machines) are used in all Indian elections. At the booth: **Step 1** — your name is verified on the electoral roll. **Step 2** — you receive a slip. **Step 3** — press the button next to your chosen candidate\'s symbol on the Balloting Unit. **Step 4** — a VVPAT slip will appear briefly confirming your vote. The process takes under 2 minutes.';
   }
 
   if (m.match(/model\s*code|mcc|conduct/)) {
-    return `The **Model Code of Conduct (MCC)** is a set of guidelines issued by the Election Commission of India when elections are announced. It restricts: use of government machinery for campaigning, announcement of new policies/schemes, use of official vehicles for electioneering. It applies to all political parties and candidates until results are declared. Violations can be reported to the ECI.`;
+    return 'The **Model Code of Conduct (MCC)** is a set of guidelines issued by the Election Commission of India when elections are announced. It restricts: use of government machinery for campaigning, announcement of new policies/schemes, use of official vehicles for electioneering. It applies to all political parties and candidates until results are declared. Violations can be reported to the ECI.';
   }
 
   if (m.match(/result|count|winner|when.*result/)) {
-    return `Vote counting happens at counting centres after polling ends. Candidates with the **most votes (first-past-the-post system)** in each constituency win. Results are announced by the Returning Officer and published on **results.eci.gov.in** in real time. Lok Sabha results are usually declared within 24 hours of counting beginning.`;
+    return 'Vote counting happens at counting centres after polling ends. Candidates with the **most votes (first-past-the-post system)** in each constituency win. Results are announced by the Returning Officer and published on **results.eci.gov.in** in real time. Lok Sabha results are usually declared within 24 hours of counting beginning.';
   }
 
   if (m.match(/right|constitutional|fundamental|article/)) {
-    return `Voting is a **constitutional right** under **Article 326** of the Indian Constitution. Every citizen aged 18 and above can vote regardless of caste, religion, gender, or economic status. The right to vote is also protected under the **Representation of the People Act, 1951**. Exercise your right — every vote shapes the nation's future!`;
+    return 'Voting is a **constitutional right** under **Article 326** of the Indian Constitution. Every citizen aged 18 and above can vote regardless of caste, religion, gender, or economic status. The right to vote is also protected under the **Representation of the People Act, 1951**. Exercise your right — every vote shapes the nation\'s future!';
   }
 
   if (m.match(/deadline|last\s*date|when.*register|time/)) {

@@ -98,7 +98,7 @@ app.use((req, _res, next) => {
           .trim()
           .slice(0, 2000);
       }
-      if (Array.isArray(value)) return value.map(sanitize);
+      if (Array.isArray(value)) {return value.map(sanitize);}
       if (value && typeof value === 'object') {
         return Object.fromEntries(
           Object.entries(value).map(([k, v]) => [k, sanitize(v)])
@@ -244,9 +244,9 @@ async function boot() {
   try {
     await initFirebase();
     console.log('[Firebase] Connected successfully');
-    
+
     initStorage();
-    
+
     // Schedule periodic analytics snapshot (every 20 minutes)
     setInterval(() => {
       uploadAnalyticsSnapshot().catch(err => console.error('[Storage Task Error]', err));

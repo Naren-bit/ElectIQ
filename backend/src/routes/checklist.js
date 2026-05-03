@@ -29,7 +29,7 @@ const {
  * @param {Object} req.body.profile - { state, electionType, isFirstTime, age }
  * @returns {{ checklist: Array, timestamp: number }}
  */
-router.post('/generate', async (req, res, next) => {
+router.post('/generate', async(req, res, next) => {
   try {
     const { profile = {}, language = 'English' } = req.body;
     const checklist = await generateChecklist(profile, language);
@@ -53,7 +53,7 @@ router.post('/generate', async (req, res, next) => {
  * @param {boolean} req.body.completed - Completion state (required)
  * @returns {{ success: boolean }}
  */
-router.post('/progress', async (req, res, next) => {
+router.post('/progress', async(req, res, next) => {
   try {
     const { sessionId, itemId, completed } = req.body;
 
@@ -83,7 +83,7 @@ router.post('/progress', async (req, res, next) => {
  * @param {string} req.params.sessionId - 8-64 char alphanumeric + hyphen/underscore
  * @returns {{ progress: Object }}
  */
-router.get('/progress/:sessionId', async (req, res, next) => {
+router.get('/progress/:sessionId', async(req, res, next) => {
   try {
     const { sessionId } = req.params;
 

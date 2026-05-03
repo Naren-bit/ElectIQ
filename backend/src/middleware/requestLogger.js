@@ -21,7 +21,7 @@ function requestLogger(req, res, next) {
 
   // Intercept res.send to set the header before headers are flushed
   const originalSend = res.send;
-  res.send = function (body) {
+  res.send = function(body) {
     if (!res.headersSent) {
       const ms = Date.now() - start;
       res.setHeader('X-Response-Time', `${ms}ms`);

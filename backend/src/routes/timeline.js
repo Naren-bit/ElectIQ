@@ -24,7 +24,7 @@ const { getTimeline } = require('../services/firebase');
  * @param {string} [req.params.state='general'] - Indian state name (alpha + spaces only)
  * @returns {{ timeline: Array, state: string, timestamp: number }}
  */
-router.get('/:state?', async (req, res, next) => {
+router.get('/:state?', async(req, res, next) => {
   try {
     const state = req.params.state || 'general';
 

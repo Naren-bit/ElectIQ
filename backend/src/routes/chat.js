@@ -29,7 +29,7 @@ const { saveSession, trackEvent } = require('../services/firebase');
  * @param {string} [req.body.sessionId] - Session ID for persistence
  * @returns {{ reply: string, timestamp: number }}
  */
-router.post('/', async (req, res, next) => {
+router.post('/', async(req, res, next) => {
   try {
     const { message, profile = {}, history = [], sessionId, language = 'English', image } = req.body;
 

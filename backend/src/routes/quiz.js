@@ -26,7 +26,7 @@ const { recordQuizResult, trackEvent } = require('../services/firebase');
  * @query {string} [previousTopics] - Comma-separated list of covered topics
  * @returns {{ question: Object, timestamp: number }}
  */
-router.get('/question', async (req, res, next) => {
+router.get('/question', async(req, res, next) => {
   try {
     const difficulty = Math.min(3, Math.max(1, parseInt(req.query.difficulty, 10) || 1));
     const profile    = { state: req.query.state || null };
@@ -57,7 +57,7 @@ router.get('/question', async (req, res, next) => {
  * @param {number}  [req.body.difficulty] - Current difficulty level
  * @returns {{ success: boolean, nextDifficulty: number }}
  */
-router.post('/answer', async (req, res, next) => {
+router.post('/answer', async(req, res, next) => {
   try {
     const { sessionId, topic, correct, difficulty } = req.body;
 
